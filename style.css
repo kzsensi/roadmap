@@ -800,6 +800,16 @@ body.connect-mode .node.connect-source {
     background: linear-gradient(135deg, #f0f7ff 0%, #fafafa 100%);
 }
 
+#selectionRect {
+    position: absolute;
+    border: 1px solid rgba(59, 130, 246, 0.8);
+    background: rgba(59, 130, 246, 0.15);
+    display: none;
+    z-index: 99;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
 .welcome-icon {
     font-size: 48px;
     margin-bottom: 12px;
@@ -853,7 +863,6 @@ body.connect-mode .node.connect-source {
     cursor: pointer;
 }
 
-/* ===== Hint Bar ===== */
 #hint {
     position: fixed;
     bottom: 14px;
@@ -866,7 +875,7 @@ body.connect-mode .node.connect-source {
     padding: 5px 14px;
     border-radius: 20px;
     border: 1px solid var(--border);
-    pointer-events: none;
+    pointer-events: auto;
     opacity: 0.7;
 }
 
