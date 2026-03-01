@@ -7,7 +7,7 @@
     <title>Roadmap Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=7">
 </head>
 
 <body>
@@ -137,8 +137,8 @@
 
     <!-- Hint / Status Bar -->
     <div id="hint">
-        <span class="hint-left">Click to select · Double-click to edit · Shift+drag to select · <kbd>?</kbd>
-            shortcuts</span>
+        <span class="hint-left">Click to select · Double-click to edit · Drag empty area to select · <kbd
+                id="btnShortcutsHelp" style="cursor:pointer; color: var(--primary);">?</kbd> shortcuts</span>
         <span class="hint-right" id="statusBar">Nodes: 0 · Lines: 0</span>
     </div>
 
@@ -164,7 +164,7 @@
                 <div class="shortcut-row"><kbd>Escape</kbd> Deselect / Close</div>
                 <div class="shortcut-row"><kbd>Arrow Keys</kbd> Nudge node 1px</div>
                 <div class="shortcut-row"><kbd>Shift+Arrows</kbd> Nudge 10px</div>
-                <div class="shortcut-row"><kbd>Shift+Drag</kbd> Rubber-band select</div>
+                <div class="shortcut-row"><kbd>Click+Drag</kbd> Rubber-band select</div>
                 <div class="shortcut-row"><kbd>Shift+Drag node</kbd> Axis-lock move</div>
                 <div class="shortcut-row"><kbd>Scroll</kbd> Pan canvas</div>
                 <div class="shortcut-row"><kbd>Ctrl+Scroll</kbd> Zoom in/out</div>
@@ -299,7 +299,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-    <script src="script.js"></script>
+    <script src="script.js?v=7"></script>
 </body>
 
 </html>
