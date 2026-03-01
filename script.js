@@ -1449,15 +1449,20 @@ function generateStaticHTML(bgColor) {
         nodeSizes[n.id] = el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 150, h: 44 };
     });
 
-    function lineD(from, to) {
+    function lineD(from, to, style) {
         const fw = nodeSizes[from.id]?.w || 150, fh = nodeSizes[from.id]?.h || 44;
         const tw = nodeSizes[to.id]?.w || 150, th = nodeSizes[to.id]?.h || 44;
-        return getLinePath(from.x + fw / 2, from.y + fh / 2, to.x + tw / 2, to.y + th / 2, data.lineStyle);
+        return getLinePath(from.x + fw / 2, from.y + fh / 2, to.x + tw / 2, to.y + th / 2, style);
+    }
+
+    function localDashArray(style) {
+        style = style || data.lineStyle || 'curved-dash';
+        return style.includes('dash') ? '8 6' : 'none';
     }
 
     let svgPaths = '';
-    data.nodes.forEach(n => { if (!n.parentId) return; const p = findNode(n.parentId); if (!p) return; svgPaths += `<path d="${lineD(p, n)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashArray()}" fill="none"/>\n`; });
-    data.connections.forEach(c => { const f = findNode(c.from), t = findNode(c.to); if (!f || !t) return; svgPaths += `<path d="${lineD(f, t)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashArray()}" fill="none"/>\n`; });
+    data.nodes.forEach(n => { if (!n.parentId) return; const p = findNode(n.parentId); if (!p) return; const s = n.lineStyle || data.lineStyle; svgPaths += `<path d="${lineD(p, n, s)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${localDashArray(s)}" fill="none"/>\n`; });
+    data.connections.forEach(c => { const f = findNode(c.from), t = findNode(c.to); if (!f || !t) return; const s = c.style || data.lineStyle; svgPaths += `<path d="${lineD(f, t, s)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${localDashArray(s)}" fill="none"/>\n`; });
 
     const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\/script>/gi, '<\\/script>');
     const fullDataJSON = JSON.stringify(data).replace(/<\/script>/gi, '<\\/script>');
