@@ -793,15 +793,46 @@ function generateStaticHTML(bgColor) {
         nodeSizes[n.id] = el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 150, h: 44 };
     });
 
-    function lineD(from, to) {
+    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+    data.nodes.forEach(n => {
+        const sz = nodeSizes[n.id] || { w: 150, h: 44 };
+        minX = Math.min(minX, n.x);
+        minY = Math.min(minY, n.y);
+        maxX = Math.max(maxX, n.x + sz.w);
+        maxY = Math.max(maxY, n.y + sz.h);
+    });
+
+    // Default values if canvas is empty
+    if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; }
+    const pad = 60, w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
+    const dx = minX - pad;
+    const dy = minY - pad;
+
+    function lineD(from, to, styleOverride) {
         const fw = nodeSizes[from.id]?.w || 150, fh = nodeSizes[from.id]?.h || 44;
         const tw = nodeSizes[to.id]?.w || 150, th = nodeSizes[to.id]?.h || 44;
-        return getLinePath(from.x + fw / 2, from.y + fh / 2, to.x + tw / 2, to.y + th / 2, data.lineStyle);
+        return getLinePath((from.x - dx) + fw / 2, (from.y - dy) + fh / 2, (to.x - dx) + tw / 2, (to.y - dy) + th / 2, styleOverride || data.lineStyle);
+    }
+
+    function getDashStyle(s) {
+        s = s || data.lineStyle || 'curved-dash';
+        if (s.includes('solid') || s === 'orthogonal') return 'none';
+        if (s.includes('straight-dash')) return '6 4';
+        return '8 5';
     }
 
     let svgPaths = '';
-    data.nodes.forEach(n => { if (!n.parentId) return; const p = findNode(n.parentId); if (!p) return; svgPaths += `<path d="${lineD(p, n)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashArray()}" fill="none"/>\n`; });
-    data.connections.forEach(c => { const f = findNode(c.from), t = findNode(c.to); if (!f || !t) return; svgPaths += `<path d="${lineD(f, t)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashArray()}" fill="none"/>\n`; });
+    data.nodes.forEach(n => {
+        if (!n.parentId) return;
+        const p = findNode(n.parentId);
+        if (!p) return;
+        svgPaths += `<path d="${lineD(p, n, n.lineStyle)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashStyle(n.lineStyle)}" fill="none"/>\n`;
+    });
+    data.connections.forEach(c => {
+        const f = findNode(c.from), t = findNode(c.to);
+        if (!f || !t) return;
+        svgPaths += `<path d="${lineD(f, t, c.style)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashStyle(c.style)}" fill="none"/>\n`;
+    });
 
     const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\/script>/gi, '<\\/script>');
 
@@ -810,12 +841,8 @@ function generateStaticHTML(bgColor) {
         const s = n.style || getDefaultStyle(n.type);
         let br = '10px'; if (s.shape === 'pill') br = '100px'; if (s.shape === 'square') br = '4px';
         let border = s.border === 'none' ? 'none' : `2px ${s.border || 'solid'} rgba(0,0,0,0.12)`;
-        nodeDivs += `<div class="rm-node" data-id="${n.id}" style="position:absolute;left:${n.x}px;top:${n.y}px;min-width:120px;max-width:240px;padding:11px 18px;border-radius:${br};font-size:13.5px;font-weight:600;text-align:center;background:${s.bg};color:${s.textColor};border:${border};box-shadow:0 1px 3px rgba(0,0,0,0.08);white-space:nowrap;cursor:pointer;">${n.title}</div>\n`;
+        nodeDivs += `<div class="rm-node" data-id="${n.id}" style="position:absolute;left:${n.x - dx}px;top:${n.y - dy}px;min-width:120px;max-width:240px;padding:11px 18px;border-radius:${br};font-size:13.5px;font-weight:600;text-align:center;background:${s.bg};color:${s.textColor};border:${border};box-shadow:0 1px 3px rgba(0,0,0,0.08);white-space:nowrap;cursor:pointer;">${n.title}</div>\n`;
     });
-
-    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-    data.nodes.forEach(n => { const sz = nodeSizes[n.id] || { w: 150, h: 44 }; minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + sz.w); maxY = Math.max(maxY, n.y + sz.h); });
-    const pad = 60, w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -847,8 +874,8 @@ body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
 </style>
 </head>
 <body>
-<div class="canvas" style="transform:translate(${-minX + pad}px,${-minY + pad}px)">
-<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
+<div class="canvas">
+<svg viewBox="0 0 ${w} ${h}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
 ${svgPaths}
 </svg>
 ${nodeDivs}
