@@ -722,7 +722,7 @@ function openDetailPanel(node) {
         const playHandler = () => {
             detailVideoPlaceholder.classList.add('hidden');
             detailIframe.classList.remove('hidden');
-            detailIframe.src = node.yt_link;
+            detailIframe.src = getEmbedUrl(node.yt_link);
             detailVideoPlaceholder.removeEventListener('click', playHandler);
         };
         detailVideoPlaceholder.addEventListener('click', playHandler);
@@ -1494,7 +1494,7 @@ body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
 .popup-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f9fafb}
 .popup-header h3{font-size:17px;font-weight:700;margin:0;color:#1a1a2e}
 .popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280}
-.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e}
+.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e;white-space:pre-wrap;}
 .popup-body h4{margin-bottom:8px;font-size:15px}
 .popup-body p{margin-bottom:10px}
 .popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
@@ -1517,7 +1517,15 @@ ${nodeDivs}
 <script>
 var nd=${exportNodes};
 function fn(id){return nd.find(function(n){return n.id===id})}
-document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=n.yt_link}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
+function getEmbedUrl(url) {
+    if (!url) return '';
+    if (url.includes('/embed/')) return url;
+    let vid = '';
+    if (url.includes('v=')) vid = url.split('v=')[1].split('&')[0];
+    else if (url.includes('youtu.be/')) vid = url.split('youtu.be/')[1].split('?')[0];
+    return vid ? 'https://www.youtube.com/embed/' + vid : url;
+}
+document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=getEmbedUrl(n.yt_link)}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
 function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
 document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
