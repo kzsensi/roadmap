@@ -607,6 +607,7 @@ body.connect-mode .node.connect-source {
     font-size: 14px;
     line-height: 1.75;
     color: var(--text);
+    white-space: pre-wrap;
 }
 
 .detail-content h4 {
