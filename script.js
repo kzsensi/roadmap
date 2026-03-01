@@ -407,8 +407,9 @@ function render() {
         el.textContent = n.title;
 
         el.addEventListener('mousedown', e => e.stopPropagation());
-        el.addEventListener('click', e => { e.stopPropagation(); handleNodeClick(n.id); });
+        el.addEventListener('click', e => { e.stopPropagation(); if (!isRubberBanding) handleNodeClick(n.id); });
         el.addEventListener('dblclick', e => { e.stopPropagation(); if (!isLocked) { selectNode(n.id); openEditModal(n); } });
+        el.addEventListener('contextmenu', e => showNodeContextMenu(e, n.id));
         nodesEl.appendChild(el);
     });
 
@@ -466,16 +467,16 @@ function drawLines() {
         if (!n.parentId) return;
         const parent = findNode(n.parentId);
         if (!parent) return;
-        drawOneLine(parent, n, 'parent:' + n.id, n.id === (selectedConnId?.replace('parent:', '')));
+        drawOneLine(parent, n, 'parent:' + n.id, n.id === (selectedConnId?.replace('parent:', '')), n.lineStyle);
     });
     data.connections.forEach(c => {
         const from = findNode(c.from), to = findNode(c.to);
         if (!from || !to) return;
-        drawOneLine(from, to, c.id, c.id === selectedConnId);
+        drawOneLine(from, to, c.id, c.id === selectedConnId, c.style);
     });
 }
 
-function drawOneLine(fromNode, toNode, lineId, isSelected) {
+function drawOneLine(fromNode, toNode, lineId, isSelected, styleOverride) {
     const fromEl = nodesEl.querySelector(`[data-id="${fromNode.id}"]`);
     const toEl = nodesEl.querySelector(`[data-id="${toNode.id}"]`);
     if (!fromEl || !toEl) return;
@@ -484,8 +485,8 @@ function drawOneLine(fromNode, toNode, lineId, isSelected) {
     const cw = toEl.offsetWidth, ch = toEl.offsetHeight;
     const x1 = fromNode.x + pw / 2, y1 = fromNode.y + ph / 2;
     const x2 = toNode.x + cw / 2, y2 = toNode.y + ch / 2;
-    const style = data.lineStyle || 'curved-dash';
-    const d = getLinePath(x1, y1, x2, y2, style);
+    const actualStyle = styleOverride || data.lineStyle || 'curved-dash';
+    const d = getLinePath(x1, y1, x2, y2, actualStyle);
 
     // Hitbox
     const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -497,12 +498,13 @@ function drawOneLine(fromNode, toNode, lineId, isSelected) {
         document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
         updateToolbar(); drawLines();
     });
+    hitbox.addEventListener('contextmenu', e => showLineContextMenu(e, lineId));
     linesEl.appendChild(hitbox);
 
     // Visible line
     const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     path.setAttribute('d', d);
-    path.setAttribute('class', (isSelected ? 'connector-line-selected' : 'connector-line') + ' style-' + style);
+    path.setAttribute('class', (isSelected ? 'connector-line-selected' : 'connector-line') + ' style-' + actualStyle);
     linesEl.appendChild(path);
 }
 
@@ -1219,7 +1221,11 @@ function applyNodeStyle(nodeId, stylePatch) {
 // Line right-click menu (stored for hitbox right-click)
 function showLineContextMenu(e, lineId) {
     e.preventDefault(); e.stopPropagation();
-    const cur = data.lineStyle;
+
+    let isParentConn = lineId.startsWith('parent:');
+    let targetObj = isParentConn ? findNode(lineId.replace('parent:', '')) : data.connections.find(c => c.id === lineId);
+    let cur = (isParentConn ? targetObj?.lineStyle : targetObj?.style) || data.lineStyle;
+
     const lineTypes = [
         { value: 'curved-dash', label: '⋯ Curved Dotted' },
         { value: 'curved-solid', label: '— Curved Solid' },
@@ -1228,14 +1234,17 @@ function showLineContextMenu(e, lineId) {
         { value: 'orthogonal', label: '⌐ Orthogonal' },
     ];
     buildCtxMenu(e.clientX, e.clientY, [
-        { type: 'section', label: 'Line Style (Global)' },
+        { type: 'section', label: 'Line Style (This line only)' },
         ...lineTypes.map(lt => ({
+            icon: lt.value === cur ? '✓' : '',
             label: lt.label,
             active: cur === lt.value,
             action: () => {
                 pushHistory();
-                data.lineStyle = lt.value;
-                lineStyleSelect.value = lt.value;
+                if (targetObj) {
+                    if (isParentConn) targetObj.lineStyle = lt.value;
+                    else targetObj.style = lt.value;
+                }
                 save(); drawLines();
             }
         })),
@@ -1256,78 +1265,7 @@ function showLineContextMenu(e, lineId) {
     ]);
 }
 
-// Attach right-click to nodes during render
-function attachNodeContextMenu(el, nodeId) {
-    el.addEventListener('contextmenu', e => showNodeContextMenu(e, nodeId));
-}
 
-// Attach right-click to line hitboxes in drawOneLine
-// (We patch drawOneLine below to pass context menu)
-const _origDrawOneLine = drawOneLine;
-
-// ===== PATCHED drawOneLine with right-click on lines =====
-// Override entire drawOneLine to add right-click
-function drawOneLine(fromNode, toNode, lineId, isSelected) {
-    const fromEl = nodesEl.querySelector(`[data-id="${fromNode.id}"]`);
-    const toEl = nodesEl.querySelector(`[data-id="${toNode.id}"]`);
-    if (!fromEl || !toEl) return;
-
-    const pw = fromEl.offsetWidth, ph = fromEl.offsetHeight;
-    const cw = toEl.offsetWidth, ch = toEl.offsetHeight;
-    const x1 = fromNode.x + pw / 2, y1 = fromNode.y + ph / 2;
-    const x2 = toNode.x + cw / 2, y2 = toNode.y + ch / 2;
-    const d = getLinePath(x1, y1, x2, y2, data.lineStyle);
-
-    const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    hitbox.setAttribute('d', d);
-    hitbox.setAttribute('class', 'connector-line-hitbox');
-    hitbox.addEventListener('click', e => {
-        e.stopPropagation();
-        selectedConnId = lineId; selectedId = null;
-        document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
-        updateToolbar(); drawLines();
-    });
-    hitbox.addEventListener('contextmenu', e => showLineContextMenu(e, lineId));
-    linesEl.appendChild(hitbox);
-
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('class', (isSelected ? 'connector-line-selected' : 'connector-line') + ' style-' + (data.lineStyle || 'curved-dash'));
-    linesEl.appendChild(path);
-}
-
-// ===== PATCHED render to attach right-click to nodes =====
-const _origRender = render;
-function render() {
-    nodesEl.innerHTML = '';
-    data.nodes.forEach(n => {
-        const el = document.createElement('div');
-        const s = n.style || getDefaultStyle(n.type);
-        el.className = 'node';
-        if (s.shape && s.shape !== 'rounded') el.classList.add('shape-' + s.shape);
-        if (s.border === 'dashed') el.classList.add('border-dashed');
-        if (s.border === 'none') el.classList.add('border-none');
-        if (n.id === selectedId) el.classList.add('selected');
-        if (multiSelected.includes(n.id) && n.id !== selectedId) el.classList.add('multi-selected');
-        if (connectMode && connectSource === n.id) el.classList.add('connect-source');
-        el.dataset.id = n.id;
-        el.style.left = n.x + 'px';
-        el.style.top = n.y + 'px';
-        el.style.backgroundColor = s.bg || '#ffffff';
-        el.style.color = s.textColor || '#1a1a2e';
-        el.textContent = n.title;
-
-        el.addEventListener('mousedown', e => e.stopPropagation());
-        el.addEventListener('click', e => { e.stopPropagation(); if (!isRubberBanding) handleNodeClick(n.id); });
-        el.addEventListener('dblclick', e => { e.stopPropagation(); if (!isLocked) { selectNode(n.id); openEditModal(n); } });
-        el.addEventListener('contextmenu', e => showNodeContextMenu(e, n.id));
-        nodesEl.appendChild(el);
-    });
-
-    drawLines();
-    setupDrag();
-    updateToolbar();
-}
 
 // Close context menu on outside click
 document.addEventListener('click', () => closeCtxMenu());
