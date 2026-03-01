@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap Editor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <!-- ===== SIDEBAR ===== -->
+    <div id="sidebar">
+        <div class="sidebar-header">
+            <span class="sidebar-title">My Roadmaps</span>
+            <button id="btnNewRoadmap" title="New Roadmap">+ New</button>
+        </div>
+        <div id="roadmapList"></div>
+    </div>
+
+    <!-- ===== MAIN AREA ===== -->
+    <div id="main">
+        <!-- Toolbar -->
+        <div id="toolbar">
+            <div class="toolbar-group">
+                <button id="btnAddMain"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="16" />
+                        <line x1="8" y1="12" x2="16" y2="12" />
+                    </svg>Main</button>
+                <button id="btnAddBranch" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M6 3v12" />
+                        <circle cx="18" cy="18" r="3" />
+                        <circle cx="6" cy="18" r="3" />
+                        <path d="M18 15a9 9 0 0 0-9-9" />
+                    </svg>Branch</button>
+                <button id="btnConnect"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>Connect</button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+                <button id="btnEdit" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                    </svg>Edit</button>
+                <button id="btnDelete" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M3 6h18" />
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>Delete</button>
+                <button id="btnUndo" title="Undo (Ctrl+Z)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M3 7v6h6" />
+                        <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                    </svg>Undo</button>
+                <button id="btnClear" title="Clear Entire Canvas" style="color: #ef4444;"><svg width="14" height="14"
+                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>Clear</button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- Line Style -->
+            <div class="toolbar-group">
+                <select id="lineStyleSelect" title="Line Style">
+                    <option value="curved-dash">⋯ Curved Dotted</option>
+                    <option value="curved-solid">— Curved Solid</option>
+                    <option value="straight-dash">- - Straight Dashed</option>
+                    <option value="straight-solid">— Straight</option>
+                    <option value="orthogonal">⌐ Orthogonal</option>
+                </select>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+                <button id="btnLock"><svg id="lockIcon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <rect x="3" y="11" width="18" height="11" rx="2" />
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg><span id="lockText">Lock</span></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <!-- Export Dropdown -->
+            <div class="dropdown" id="exportDropdown">
+                <button id="btnExportToggle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                        <polyline points="7 10 12 15 17 10" />
+                        <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>Export ▾</button>
+                <div class="dropdown-menu" id="exportMenu">
+                    <div class="dropdown-label">Export</div>
+                    <button id="btnExportJSON">📄 As JSON</button>
+                    <button id="btnExportHTML">🌐 As HTML (white bg)</button>
+                    <button id="btnExportHTMLTransparent">🪟 As HTML (transparent)</button>
+                </div>
+            </div>
+            <button id="btnImport"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2.5">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>Import</button>
+            <input type="file" id="importFile" accept=".json" hidden>
+            <!-- Zoom -->
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+                <button id="btnZoomIn" title="Zoom In">+</button>
+                <button id="btnZoomReset" title="Reset view" style="font-size:10px;padding:5px 7px;">100%</button>
+                <button id="btnZoomOut" title="Zoom Out">−</button>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div id="canvasWrapper">
+            <div id="canvas">
+                <div id="selectionRect"></div>
+                <svg id="lines"></svg>
+                <div id="nodes"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Connect Mode Banner -->
+    <div id="connectBanner" class="connect-banner hidden">
+        🔗 <strong>Connect Mode:</strong> Click node A, then node B to draw a line. <button id="cancelConnect"
+            class="btn-sm">Cancel</button>
+    </div>
+
+    <!-- Hint / Status Bar -->
+    <div id="hint">
+        <span class="hint-left">Click to select · Double-click to edit · Shift+drag to select · <kbd>?</kbd>
+            shortcuts</span>
+        <span class="hint-right" id="statusBar">Nodes: 0 · Lines: 0</span>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div id="shortcutsPanel" class="hidden">
+        <div class="shortcuts-card">
+            <div class="shortcuts-header">
+                <h3>⌨️ Keyboard Shortcuts</h3>
+                <button id="closeShortcuts" class="icon-btn">&times;</button>
+            </div>
+            <div class="shortcuts-body">
+                <div class="shortcut-row"><kbd>Ctrl+Z</kbd> Undo</div>
+                <div class="shortcut-row"><kbd>Ctrl+Y</kbd> Redo</div>
+                <div class="shortcut-row"><kbd>Ctrl+C</kbd> Copy selected</div>
+                <div class="shortcut-row"><kbd>Ctrl+X</kbd> Cut selected</div>
+                <div class="shortcut-row"><kbd>Ctrl+V</kbd> Paste</div>
+                <div class="shortcut-row"><kbd>Ctrl+D</kbd> Duplicate selected</div>
+                <div class="shortcut-row"><kbd>Ctrl+A</kbd> Select all nodes</div>
+                <div class="shortcut-row"><kbd>Delete</kbd> Delete selected</div>
+                <div class="shortcut-row"><kbd>Escape</kbd> Deselect / Close</div>
+                <div class="shortcut-row"><kbd>Arrow Keys</kbd> Nudge node 1px</div>
+                <div class="shortcut-row"><kbd>Shift+Arrows</kbd> Nudge 10px</div>
+                <div class="shortcut-row"><kbd>Shift+Drag</kbd> Rubber-band select</div>
+                <div class="shortcut-row"><kbd>Shift+Drag node</kbd> Axis-lock move</div>
+                <div class="shortcut-row"><kbd>Scroll</kbd> Pan canvas</div>
+                <div class="shortcut-row"><kbd>Ctrl+Scroll</kbd> Zoom in/out</div>
+                <div class="shortcut-row"><kbd>?</kbd> Toggle this panel</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== DETAIL PANEL ===== -->
+    <div id="detailPanel" class="detail-panel hidden">
+        <div class="detail-header">
+            <h3 id="detailTitle">Topic</h3>
+            <button id="closeDetailBtn" class="icon-btn">&times;</button>
+        </div>
+        <div class="detail-body">
+            <div id="detailVideo" class="detail-video hidden">
+                <div id="detailVideoPlaceholder" class="video-placeholder">
+                    <div class="play-btn"><svg viewBox="0 0 24 24" fill="white">
+                            <polygon points="5 3 19 12 5 21 5 3" />
+                        </svg></div>
+                    <span>Click to play</span>
+                </div>
+                <iframe id="detailIframe" class="hidden" src="" allowfullscreen></iframe>
+            </div>
+            <div id="detailContent" class="detail-content"></div>
+        </div>
+    </div>
+
+    <!-- ===== EDIT MODAL ===== -->
+    <div id="editModal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Edit Node</h3>
+                <button id="modalClose" class="icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editNodeId">
+                <label>Title</label>
+                <input type="text" id="editTitle" placeholder="Node title...">
+                <label>Definition (HTML allowed)</label>
+                <textarea id="editDefinition" rows="5" placeholder="Write description, examples..."></textarea>
+                <label>YouTube Embed URL</label>
+                <input type="url" id="editYtLink" placeholder="https://www.youtube.com/embed/...">
+                <div class="style-row">
+                    <div>
+                        <label>Color</label>
+                        <input type="color" id="editColor" value="#3b82f6">
+                    </div>
+                    <div>
+                        <label>Shape</label>
+                        <select id="editShape">
+                            <option value="rounded">Rounded</option>
+                            <option value="pill">Pill</option>
+                            <option value="square">Square</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Border</label>
+                        <select id="editBorder">
+                            <option value="solid">Solid</option>
+                            <option value="dashed">Dashed</option>
+                            <option value="none">None</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="modalCancel" class="btn-secondary">Cancel</button>
+                <button id="modalSave" class="btn-primary">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== WELCOME MODAL ===== -->
+    <div id="welcomeModal" class="modal-overlay hidden">
+        <div class="modal-card welcome-card">
+            <div class="welcome-hero">
+                <div class="welcome-icon">🗺️</div>
+                <h2>Welcome to Roadmap Editor</h2>
+                <p>Build interactive roadmaps and flowcharts — then export them anywhere.</p>
+            </div>
+            <div class="welcome-features">
+                <div class="feature-item"><span>🖱️</span>
+                    <div><strong>Drag</strong> nodes anywhere on the infinite canvas</div>
+                </div>
+                <div class="feature-item"><span>🔗</span>
+                    <div><strong>Connect</strong> any two nodes with curved or straight lines</div>
+                </div>
+                <div class="feature-item"><span>✏️</span>
+                    <div><strong>Edit</strong> titles, descriptions, colors, and YouTube links</div>
+                </div>
+                <div class="feature-item"><span>🔒</span>
+                    <div><strong>Lock</strong> to present — click nodes to show detail panels</div>
+                </div>
+                <div class="feature-item"><span>📤</span>
+                    <div><strong>Export</strong> as HTML or JSON for sharing or embedding</div>
+                </div>
+                <div class="feature-item"><span>📚</span>
+                    <div><strong>Multiple roadmaps</strong> — manage them from the left sidebar</div>
+                </div>
+            </div>
+            <div class="welcome-footer">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="dontShowAgain"> Don't show again
+                </label>
+                <button id="btnWelcomeClose" class="btn-primary">Get Started →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RENAME MODAL ===== -->
+    <div id="renameModal" class="modal-overlay hidden">
+        <div class="modal-card" style="max-width:380px">
+            <div class="modal-header">
+                <h3>Rename Roadmap</h3>
+                <button id="renameClose" class="icon-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label>Name</label>
+                <input type="text" id="renameInput" placeholder="Roadmap name...">
+            </div>
+            <div class="modal-footer">
+                <button id="renameCancel" class="btn-secondary">Cancel</button>
+                <button id="renameSave" class="btn-primary">Rename</button>
+            </div>
+        </div>
+    </div>
+    <div
+        style="position: fixed; bottom: 12px; right: 24px; font-family: 'Inter', sans-serif; font-size: 14px; font-weight: 600; pointer-events: none; z-index: 1000; letter-spacing: 0.5px;">
+        <span style="color: #0f172a;">made by </span><span style="color: #ef4444;">Krishna :)</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="script.js"></script>
+</body>
+
+</html>
