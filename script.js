@@ -33,25 +33,8 @@ function genId() {
 // ===== DEFAULT DATA =====
 function getDefaultData() {
     return {
-        nodes: [
-            { id: 'n1', title: 'Python Fundamentals', type: 'main', x: 3850, y: 3750, parentId: null, definition: '<h4>Python Fundamentals</h4><p>Core building blocks — variables, control flow, data structures, and functions.</p>', yt_link: '', style: { bg: '#3b82f6', textColor: '#ffffff', shape: 'rounded', border: 'solid' } },
-            { id: 'n2', title: 'Variables & Types', type: 'branch', x: 3540, y: 3870, parentId: 'n1', definition: '<h4>Variables & Data Types</h4><p>int, float, str, bool, list, tuple, dict, set.</p>', yt_link: 'https://www.youtube.com/embed/vEQ8CXFWLZU', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n3', title: 'Conditionals & Loops', type: 'branch', x: 3780, y: 3870, parentId: 'n1', definition: '<h4>Conditionals & Loops</h4><p>if/elif/else, for, while, break, continue.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n4', title: 'Functions', type: 'branch', x: 4040, y: 3870, parentId: 'n1', definition: '<h4>Functions</h4><p>def, args, kwargs, lambda, decorators.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n5', title: 'Data Structures', type: 'branch', x: 4270, y: 3870, parentId: 'n1', definition: '<h4>Data Structures</h4><p>Lists, Tuples, Dicts, Sets — and when to use each.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n6', title: 'OOP', type: 'main', x: 3850, y: 4050, parentId: null, definition: '<h4>Object-Oriented Programming</h4><p>Classes, objects, encapsulation, inheritance, polymorphism.</p>', yt_link: '', style: { bg: '#8b5cf6', textColor: '#ffffff', shape: 'rounded', border: 'solid' } },
-            { id: 'n7', title: 'Encapsulation', type: 'branch', x: 3620, y: 4170, parentId: 'n6', definition: '<h4>Encapsulation</h4><p>Bundling data and methods. Public/protected/private.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n8', title: 'Inheritance', type: 'branch', x: 3840, y: 4170, parentId: 'n6', definition: '<h4>Inheritance</h4><p>Parent → child class. `super()`. MRO.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n9', title: 'Polymorphism', type: 'branch', x: 4060, y: 4170, parentId: 'n6', definition: '<h4>Polymorphism</h4><p>Method overriding. Duck typing.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n10', title: 'DSA', type: 'main', x: 3850, y: 4360, parentId: null, definition: '<h4>Data Structures & Algorithms</h4><p>Arrays, linked lists, trees, graphs, sorting, searching.</p>', yt_link: '', style: { bg: '#059669', textColor: '#ffffff', shape: 'rounded', border: 'solid' } },
-            { id: 'n11', title: 'Arrays & Lists', type: 'branch', x: 3630, y: 4480, parentId: 'n10', definition: '<h4>Arrays & Linked Lists</h4><p>Linear structures. O(1) access vs O(1) insert.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n12', title: 'Trees & Graphs', type: 'branch', x: 3870, y: 4480, parentId: 'n10', definition: '<h4>Trees & Graphs</h4><p>BST, AVL, heaps. BFS, DFS, Dijkstra.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-            { id: 'n13', title: 'Sorting Algorithms', type: 'branch', x: 4100, y: 4480, parentId: 'n10', definition: '<h4>Sorting</h4><p>Merge sort, quick sort, heap sort. Time complexity analysis.</p>', yt_link: '', style: { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' } },
-        ],
-        connections: [
-            { id: 'c1', from: 'n1', to: 'n6' },
-            { id: 'c2', from: 'n6', to: 'n10' },
-        ],
+        nodes: [],
+        connections: [],
         lineStyle: 'curved-dash'
     };
 }
@@ -488,17 +471,11 @@ function drawOneLine(fromNode, toNode, lineId, isSelected, styleOverride) {
     const actualStyle = styleOverride || data.lineStyle || 'curved-dash';
     const d = getLinePath(x1, y1, x2, y2, actualStyle);
 
-    // Hitbox
+    // Invisible hitbox path — used only for isPointInStroke() hit testing
     const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     hitbox.setAttribute('d', d);
     hitbox.setAttribute('class', 'connector-line-hitbox');
-    hitbox.addEventListener('click', e => {
-        e.stopPropagation();
-        selectedConnId = lineId; selectedId = null;
-        document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
-        updateToolbar(); drawLines();
-    });
-    hitbox.addEventListener('contextmenu', e => showLineContextMenu(e, lineId));
+    hitbox.dataset.lineId = lineId;
     linesEl.appendChild(hitbox);
 
     // Visible line
@@ -507,6 +484,51 @@ function drawOneLine(fromNode, toNode, lineId, isSelected, styleOverride) {
     path.setAttribute('class', (isSelected ? 'connector-line-selected' : 'connector-line') + ' style-' + actualStyle);
     linesEl.appendChild(path);
 }
+
+// ===== LINE HIT-TESTING (works despite SVG pointer-events: none) =====
+function getLineIdAtPoint(clientX, clientY) {
+    const svg = linesEl;
+    const pt = svg.createSVGPoint();
+    // Convert client coords to SVG coords accounting for panzoom transforms
+    const ctm = svg.getScreenCTM();
+    if (!ctm) return null;
+    pt.x = clientX;
+    pt.y = clientY;
+    const svgPt = pt.matrixTransform(ctm.inverse());
+
+    const hitboxes = svg.querySelectorAll('.connector-line-hitbox');
+    for (const hb of hitboxes) {
+        try {
+            if (hb.isPointInStroke(svgPt)) {
+                return hb.dataset.lineId;
+            }
+        } catch (e) { /* ignore */ }
+    }
+    return null;
+}
+
+// Click on empty canvas area — check if we hit a line
+canvasWrapper.addEventListener('click', e => {
+    if (e.target.closest('.node') || e.target.closest('.ctx-menu')) return;
+    const lineId = getLineIdAtPoint(e.clientX, e.clientY);
+    if (lineId) {
+        e.stopPropagation();
+        selectedConnId = lineId; selectedId = null;
+        document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
+        updateToolbar(); drawLines();
+    }
+});
+
+// Right-click on empty canvas area — check if we hit a line
+canvasWrapper.addEventListener('contextmenu', e => {
+    if (e.target.closest('.node') || e.target.closest('.ctx-menu')) return;
+    const lineId = getLineIdAtPoint(e.clientX, e.clientY);
+    if (lineId) {
+        e.preventDefault();
+        e.stopPropagation();
+        showLineContextMenu(e, lineId);
+    }
+}, true);
 
 // ===== DRAG =====
 function setupDrag() {
@@ -901,8 +923,10 @@ canvasEl.addEventListener('click', e => {
 // ===== KEYBOARD =====
 const shortcutsPanel = document.getElementById('shortcutsPanel');
 const closeShortcutsBtn = document.getElementById('closeShortcuts');
+const btnShortcutsHelp = document.getElementById('btnShortcutsHelp');
 function toggleShortcuts() { shortcutsPanel.classList.toggle('hidden'); }
 if (closeShortcutsBtn) closeShortcutsBtn.addEventListener('click', toggleShortcuts);
+if (btnShortcutsHelp) btnShortcutsHelp.addEventListener('click', toggleShortcuts);
 if (shortcutsPanel) shortcutsPanel.addEventListener('click', e => { if (e.target === shortcutsPanel) toggleShortcuts(); });
 
 document.addEventListener('keydown', e => {
@@ -1286,7 +1310,7 @@ function clearMultiSelect() {
     document.querySelectorAll('.node.multi-selected').forEach(el => el.classList.remove('multi-selected'));
 }
 
-canvasWrapper.addEventListener('mousedown', e => {
+canvasWrapper.addEventListener('pointerdown', e => {
     // Only start rubber-band on empty canvas area
     const isNode = e.target.closest('.node');
     const isHitbox = e.target.closest('.connector-line-hitbox');
@@ -1296,46 +1320,37 @@ canvasWrapper.addEventListener('mousedown', e => {
     if (e.button !== 0) return;
     if (connectMode || isLocked) return;
 
-    // REQUIRE Shift key for rubber-band to avoid breaking normal canvas pan
-    if (!e.shiftKey) return;
-
-    // Stop panzoom from eating this event, and stop native text selection
-    e.stopPropagation();
-    e.preventDefault();
-
     // Shift+Left-click drag on empty canvas = rubber-band select
     panzoomInstance.setOptions({ disablePan: true });
 
     clearMultiSelect();
     deselectAll();
 
-    const wrapRect = canvasWrapper.getBoundingClientRect();
-    const pan = panzoomInstance.getPan();
+    const crect = canvasEl.getBoundingClientRect();
     const scale = panzoomInstance.getScale();
 
     rbStart = {
         clientX: e.clientX,
         clientY: e.clientY,
-        canvasX: (e.clientX - wrapRect.left - pan.x) / scale,
-        canvasY: (e.clientY - wrapRect.top - pan.y) / scale,
+        canvasX: (e.clientX - crect.left) / scale,
+        canvasY: (e.clientY - crect.top) / scale,
     };
 
     selectionRect.style.display = 'none';
     isRubberBanding = false;
 }, { capture: true });
 
-document.addEventListener('mousemove', e => {
+document.addEventListener('pointermove', e => {
     if (!rbStart) return;
     const dx = e.clientX - rbStart.clientX;
     const dy = e.clientY - rbStart.clientY;
     if (!isRubberBanding && Math.sqrt(dx * dx + dy * dy) > 6) isRubberBanding = true;
     if (!isRubberBanding) return;
 
-    const wrapRect = canvasWrapper.getBoundingClientRect();
-    const pan = panzoomInstance.getPan();
+    const crect = canvasEl.getBoundingClientRect();
     const scale = panzoomInstance.getScale();
-    const curX = (e.clientX - wrapRect.left - pan.x) / scale;
-    const curY = (e.clientY - wrapRect.top - pan.y) / scale;
+    const curX = (e.clientX - crect.left) / scale;
+    const curY = (e.clientY - crect.top) / scale;
 
     const rx = Math.min(rbStart.canvasX, curX);
     const ry = Math.min(rbStart.canvasY, curY);
@@ -1361,7 +1376,7 @@ document.addEventListener('mousemove', e => {
     });
 });
 
-document.addEventListener('mouseup', e => {
+document.addEventListener('pointerup', e => {
     if (rbStart) {
         if (isRubberBanding) {
             selectionRect.style.display = 'none';
@@ -1485,9 +1500,6 @@ body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
 .popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
 .popup-video{margin-bottom:16px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#0f172a}
 .popup-video iframe{width:100%;height:100%;border:none}
-/* Import bar */
-.import-bar{position:fixed;bottom:16px;right:16px;z-index:500;display:flex;gap:8px;align-items:center;background:rgba(255,255,255,0.9);backdrop-filter:blur(10px);border:1px solid #d1d5db;border-radius:10px;padding:8px 12px;box-shadow:0 4px 14px rgba(0,0,0,0.1);font-family:Inter,sans-serif;font-size:12px;color:#6b7280}
-.import-bar button{padding:5px 12px;background:#3b82f6;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
 </style>
 </head>
 <body>
@@ -1502,11 +1514,6 @@ ${nodeDivs}
 <div class="popup-header"><h3 id="popupTitle"></h3><button class="popup-close" onclick="closePopup()">&times;</button></div>
 <div class="popup-body"><div id="popupVideo" class="popup-video" style="display:none"><iframe id="popupIframe" src="" allowfullscreen></iframe></div><div id="popupContent"></div></div>
 </div></div>
-<div class="import-bar">
-  📂 Import JSON to update
-  <input type="file" id="importJsonFile" accept=".json" style="display:none">
-  <button onclick="document.getElementById('importJsonFile').click()">Choose File</button>
-</div>
 <script>
 var nd=${exportNodes};
 function fn(id){return nd.find(function(n){return n.id===id})}
@@ -1514,20 +1521,6 @@ document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('
 function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
 document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
-document.getElementById('importJsonFile').addEventListener('change',function(e){
-  var file=e.target.files[0];if(!file)return;
-  var r=new FileReader();
-  r.onload=function(ev){
-    try{
-      var d=JSON.parse(ev.target.result);
-      if(!d.nodes){alert('Invalid roadmap JSON.');return;}
-      nd=d.nodes.map(function(n){return{id:n.id,title:n.title,definition:n.definition||'',yt_link:n.yt_link||''}});
-      alert('Roadmap data updated! Node popups now show updated content. Reload page with a new export for full visual update.');
-    }catch(err){alert('Failed to parse JSON.');}
-  };
-  r.readAsText(file);
-  e.target.value='';
-});
 <\/script>
 </body>
 </html>`;
