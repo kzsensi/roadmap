@@ -793,9 +793,10 @@ function generateStaticHTML(bgColor) {
         nodeSizes[n.id] = el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 150, h: 44 };
     });
 
-    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     data.nodes.forEach(n => {
-        const sz = nodeSizes[n.id] || { w: 150, h: 44 };
+        let sz = nodeSizes[n.id];
+        if (!sz || sz.w === 0 || sz.h === 0) sz = { w: 150, h: 44 };
         minX = Math.min(minX, n.x);
         minY = Math.min(minY, n.y);
         maxX = Math.max(maxX, n.x + sz.w);
@@ -809,8 +810,10 @@ function generateStaticHTML(bgColor) {
     const dy = minY - pad;
 
     function lineD(from, to, styleOverride) {
-        const fw = nodeSizes[from.id]?.w || 150, fh = nodeSizes[from.id]?.h || 44;
-        const tw = nodeSizes[to.id]?.w || 150, th = nodeSizes[to.id]?.h || 44;
+        let fw = nodeSizes[from.id]?.w; if (!fw) fw = 150;
+        let fh = nodeSizes[from.id]?.h; if (!fh) fh = 44;
+        let tw = nodeSizes[to.id]?.w; if (!tw) tw = 150;
+        let th = nodeSizes[to.id]?.h; if (!th) th = 44;
         return getLinePath((from.x - dx) + fw / 2, (from.y - dy) + fh / 2, (to.x - dx) + tw / 2, (to.y - dy) + th / 2, styleOverride || data.lineStyle);
     }
 
