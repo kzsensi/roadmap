@@ -128,6 +128,16 @@ function isLightColor(hex) {
     const b = parseInt(hex.slice(5, 7), 16);
     return (r * 299 + g * 587 + b * 114) / 1000 > 155;
 }
+function getEmbedUrl(url) {
+    if (!url) return '';
+    if (url.includes('/embed/')) return url;
+    let vid = '';
+    if (url.includes('v=')) { vid = url.split('v=')[1].split('&')[0].split('#')[0]; }
+    else if (url.includes('youtu.be/')) { vid = url.split('youtu.be/')[1].split('?')[0].split('#')[0]; }
+    else if (url.includes('/shorts/')) { vid = url.split('/shorts/')[1].split('?')[0]; }
+    else if (url.includes('/live/')) { vid = url.split('/live/')[1].split('?')[0]; }
+    return vid ? 'https://www.youtube.com/embed/' + vid : url;
+}
 
 // ===== TOAST NOTIFICATIONS =====
 const toastContainer = document.getElementById('toastContainer');
@@ -716,20 +726,11 @@ function openDetailPanel(node) {
     detailContent.innerHTML = node.definition || '<p style="color:#9ca3af">No description yet.</p>';
     if (node.yt_link) {
         detailVideo.classList.remove('hidden');
-        detailIframe.classList.add('hidden');
-        detailVideoPlaceholder.classList.remove('hidden');
-        detailIframe.src = '';
-        const playHandler = () => {
-            detailVideoPlaceholder.classList.add('hidden');
-            detailIframe.classList.remove('hidden');
-            detailIframe.src = getEmbedUrl(node.yt_link);
-            detailVideoPlaceholder.removeEventListener('click', playHandler);
-        };
-        detailVideoPlaceholder.addEventListener('click', playHandler);
+        document.getElementById('detailYtLink').href = node.yt_link;
     } else { detailVideo.classList.add('hidden'); }
     detailPanel.classList.remove('hidden');
 }
-closeDetailBtn.addEventListener('click', () => { detailPanel.classList.add('hidden'); detailIframe.src = ''; });
+closeDetailBtn.addEventListener('click', () => { detailPanel.classList.add('hidden'); });
 
 // ===== EDIT MODAL =====
 function openEditModal(node) {
@@ -860,20 +861,30 @@ body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
 .canvas{position:relative;width:${w}px;height:${h}px;margin:20px auto}
 .rm-node{transition:box-shadow .15s,transform .12s}
 .rm-node:hover{box-shadow:0 6px 20px rgba(0,0,0,0.15)!important;transform:translateY(-2px)}
-.popup-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);align-items:center;justify-content:center}
+.popup-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px}
 .popup-overlay.show{display:flex}
-.popup-card{background:#fff;border-radius:16px;width:92%;max-width:540px;max-height:85vh;overflow:hidden;box-shadow:0 12px 50px rgba(0,0,0,0.2);display:flex;flex-direction:column;animation:popIn .2s ease}
-@keyframes popIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
-.popup-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f9fafb}
-.popup-header h3{font-size:17px;font-weight:700;margin:0;color:#1a1a2e}
-.popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280;transition:color .15s}
-.popup-close:hover{color:#ef4444}
-.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e}
-.popup-body h4{margin-bottom:8px;font-size:15px}
-.popup-body p{margin-bottom:10px}
-.popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
-.popup-video{margin-bottom:16px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#0f172a}
-.popup-video iframe{width:100%;height:100%;border:none}
+.popup-card{background:#fff;border-radius:20px;width:100%;max-width:600px;max-height:85vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.2);display:flex;flex-direction:column;animation:popIn .25s cubic-bezier(0.16,1,0.3,1)}
+@keyframes popIn{from{opacity:0;transform:scale(0.92) translateY(10px)}to{opacity:1;transform:scale(1) translateY(0)}}
+.popup-header{display:flex;justify-content:space-between;align-items:center;padding:24px 30px;border-bottom:2px solid #f0f2f5;background:#f9fafb}
+.popup-header h3{font-size:20px;font-weight:800;margin:0;color:#1a1a2e;text-transform:uppercase;letter-spacing:0.5px}
+.popup-close{background:rgba(0,0,0,0.05);border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;color:#6b7280;transition:all .15s}
+.popup-close:hover{background:#ef4444;color:#fff}
+.popup-body{padding:30px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:24px;}
+.popup-content{font-size:16px;line-height:1.7;color:#374151;white-space:pre-wrap;flex:1}
+.popup-content h4{margin-top:12px;margin-bottom:14px;font-size:16px;font-weight:800;text-transform:uppercase;border-bottom:2px solid #1a1a2e;padding-bottom:6px;display:inline-block;color:#1a1a2e}
+.popup-content p{margin-bottom:16px}
+.popup-content ul,.popup-content ol{margin-left:24px;margin-bottom:16px}
+.popup-content code{background:#f0f2f5;padding:3px 8px;border-radius:6px;font-size:14px;border:1px solid #e5e7eb;font-family:monospace;font-weight:600;color:#ef4444}
+.popup-video{margin-top:auto}
+.yt-link-btn{display:flex;align-items:center;justify-content:center;gap:12px;padding:16px 24px;background:#1a1a2e;color:#fff;text-decoration:none;border-radius:12px;font-size:15px;font-weight:800;text-transform:uppercase;letter-spacing:0.5px;border:2px solid #1a1a2e;box-shadow:4px 4px 0 rgba(0,0,0,0.1);transition:transform .1s,box-shadow .1s;width:100%}
+.yt-link-btn:hover{background:#2d2d44;transform:translate(2px,2px);box-shadow:2px 2px 0 rgba(0,0,0,0.1)}
+.yt-link-btn svg{flex-shrink:0}
+.canvas-wrapper { width: 100%; overflow-x: hidden; padding: 20px; }
+@media (max-width: 600px) {
+    .popup-card { border-radius: 14px; }
+    .popup-body { padding: 16px; font-size: 14px; }
+    .popup-header { padding: 16px 18px; }
+}
 </style>
 </head>
 <body>
@@ -886,13 +897,31 @@ ${nodeDivs}
 <div class="popup-overlay" id="popup">
 <div class="popup-card">
 <div class="popup-header"><h3 id="popupTitle"></h3><button class="popup-close" onclick="closePopup()">&times;</button></div>
-<div class="popup-body"><div id="popupVideo" class="popup-video" style="display:none"><iframe id="popupIframe" src="" allowfullscreen></iframe></div><div id="popupContent"></div></div>
+<div class="popup-body">
+<div id="popupContent" class="popup-content"></div>
+<div id="popupVideo" class="popup-video" style="display:none">
+<a id="popupYtLink" href="#" target="_blank" rel="noopener noreferrer" class="yt-link-btn">
+<svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+<span>Watch on YouTube</span>
+</a>
+</div>
+</div>
 </div></div>
 <script>
 var nd=${exportNodes};
 function fn(id){return nd.find(function(n){return n.id===id})}
-document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=n.yt_link}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
-function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
+document.querySelectorAll('.rm-node').forEach(function(el){
+el.addEventListener('click',function(){
+var n=fn(el.dataset.id);
+if(!n)return;
+document.getElementById('popupTitle').textContent=n.title;
+document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af;font-style:italic">No description provided.</p>';
+var v=document.getElementById('popupVideo'), l=document.getElementById('popupYtLink');
+if(n.yt_link){v.style.display='block';l.href=n.yt_link;}else{v.style.display='none';l.href='#';}
+document.getElementById('popup').classList.add('show');
+});
+});
+function closePopup(){document.getElementById('popup').classList.remove('show');}
 document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
 document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
 <\/script>
@@ -1480,7 +1509,7 @@ function applyNodeStyleSilent(nodeId, patch) {
     n.style = Object.assign(n.style || getDefaultStyle(n.type), patch);
 }
 
-// ===== UPDATED HTML EXPORT (with JSON import panel) =====
+// ===== UPDATED HTML EXPORT (responsive, editable config, fixed YouTube) =====
 function generateStaticHTML(bgColor) {
     bgColor = bgColor || '#ffffff';
     const nodeSizes = {};
@@ -1533,7 +1562,8 @@ function generateStaticHTML(bgColor) {
         svgPaths += `<path d="${lineD(f, t, s)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${localDashArray(s)}" fill="none"/>\n`;
     });
 
-    const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\/script>/gi, '<\\/script>');
+    const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\//g, '<\\/');
+    const fullDataJSON = JSON.stringify(data).replace(/<\//g, '<\\/');
 
     let nodeDivs = '';
     data.nodes.forEach(n => {
@@ -1551,57 +1581,203 @@ function generateStaticHTML(bgColor) {
 <title>Roadmap</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
-.canvas{position:relative;width:${w}px;height:${h}px;margin:20px auto}
-.rm-node{transition:box-shadow .15s,transform .12s}
-.rm-node:hover{box-shadow:0 6px 22px rgba(0,0,0,0.16)!important;transform:translateY(-2px)}
-.popup-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);align-items:center;justify-content:center}
-.popup-overlay.show{display:flex}
-.popup-card{background:#fff;border-radius:16px;width:92%;max-width:540px;max-height:85vh;overflow:hidden;box-shadow:0 12px 50px rgba(0,0,0,0.2);display:flex;flex-direction:column;animation:popIn .2s ease}
-@keyframes popIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
-.popup-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f9fafb}
-.popup-header h3{font-size:17px;font-weight:700;margin:0;color:#1a1a2e}
-.popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280}
-.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e;white-space:pre-wrap;}
-.popup-body h4{margin-bottom:8px;font-size:15px}
-.popup-body p{margin-bottom:10px}
-.popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
-.popup-video{margin-bottom:16px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#0f172a}
-.popup-video iframe{width:100%;height:100%;border:none}
+/* ============================================================
+   EDITABLE CONFIGURATION
+   Change these values to customize the look of your roadmap!
+   --bg-color ........... Background color (use 'transparent' for none)
+   --line-color ......... Color of connecting lines
+   --line-width ......... Thickness of connecting lines
+   --node-hover-shadow .. Shadow on node hover
+   --popup-max-width .... Max width of the detail popup
+   ============================================================ */
+:root {
+    --bg-color: ${bgColor};
+    --line-color: #94a3b8;
+    --line-width: 2;
+    --node-hover-shadow: 0 6px 22px rgba(0,0,0,0.16);
+    --popup-max-width: 540px;
+}
+
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+    background: var(--bg-color);
+    font-family: 'Inter', -apple-system, sans-serif;
+    overflow: auto;
+    min-height: 100vh;
+}
+.canvas-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px;
+}
+.canvas {
+    position: relative;
+    width: ${w}px;
+    height: ${h}px;
+    margin: 0 auto;
+    transform-origin: top left;
+}
+.rm-node { transition: box-shadow .15s ease, transform .12s ease; }
+.rm-node:hover {
+    box-shadow: var(--node-hover-shadow) !important;
+    transform: translateY(-2px);
+}
+.popup-overlay {
+    display: none; position: fixed; inset: 0; z-index: 999;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+}
+.popup-overlay.show { display: flex; }
+.popup-card {
+    background: #fff; border-radius: 20px; width: 92%;
+    max-width: var(--popup-max-width); max-height: 85vh;
+    overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+    display: flex; flex-direction: column; animation: popIn .25s cubic-bezier(0.16,1,0.3,1);
+}
+.popup-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px; border-bottom: 2px solid #f0f2f5;
+    background: linear-gradient(135deg, #1a1a2e 0%, #2d2d50 100%);
+}
+.popup-header h3 { font-size: 18px; font-weight: 800; margin: 0; color: #fff; letter-spacing: 0.4px; }
+.popup-close {
+    background: rgba(255,255,255,0.1); border: 1.5px solid rgba(255,255,255,0.2);
+    border-radius: 8px; width: 32px; height: 32px; display: flex;
+    align-items: center; justify-content: center; font-size: 20px;
+    cursor: pointer; color: #fff; transition: all .15s;
+}
+.popup-close:hover { background: #ef4444; border-color: #ef4444; }
+.popup-body {
+    padding: 24px; overflow-y: auto; flex: 1;
+    font-size: 15px; line-height: 1.75; color: #1a1a2e;
+    display: flex; flex-direction: column; gap: 0;
+}
+@keyframes popIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+.popup-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 18px 22px; border-bottom: 1px solid #e5e7eb; background: #f9fafb;
+}
+.popup-header h3 { font-size: 17px; font-weight: 700; margin: 0; color: #1a1a2e; }
+.popup-close {
+    background: none; border: none; font-size: 24px;
+    cursor: pointer; color: #6b7280; transition: color .15s;
+}
+.popup-close:hover { color: #ef4444; }
+.popup-body {
+    padding: 24px; overflow-y: auto; flex: 1;
+    font-size: 15px; line-height: 1.75; color: #1a1a2e; white-space: normal;
+}
+    .popup-body h3 { font-size: 17px; font-weight: 800; margin: 0 0 12px; color: #1a1a2e; }
+.popup-body h4 { font-size: 14px; font-weight: 700; margin: 16px 0 8px; color: #374151; text-transform: uppercase; letter-spacing: 0.4px; }
+.popup-body p { margin: 0 0 10px; }
+.popup-body ul, .popup-body ol { margin: 0 0 10px 20px; padding: 0; }
+.popup-body li { margin-bottom: 4px; }
+.popup-body pre { background: #f1f5f9; border-radius: 8px; padding: 12px; overflow-x: auto; margin: 10px 0; }
+.popup-body pre code { background: none; border: none; padding: 0; font-size: 13px; }
+.popup-body code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 13px; border: 1px solid #e5e7eb; }
+.popup-body h4 { margin-bottom: 8px; font-size: 15px; }
+.popup-body p { margin-bottom: 10px; }
+.popup-body code { background: #f0f2f5; padding: 2px 6px; border-radius: 4px; font-size: 12.5px; }
+.yt-link-btn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px; background: #1a1a2e; color: #fff;
+    text-decoration: none; border-radius: 10px;
+    font-size: 14px; font-weight: 600;
+    transition: background .15s, transform .12s; cursor: pointer;
+}
+.yt-link-btn:hover { background: #2d2d44; transform: translateY(-1px); }
+.yt-link-btn svg { flex-shrink: 0; }
 </style>
 </head>
 <body>
-<div class="canvas">
+<div class="canvas-wrapper" id="canvasWrapper">
+<div class="canvas" id="roadmapCanvas">
 <svg viewBox="0 0 ${w} ${h}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
 ${svgPaths}
 </svg>
 ${nodeDivs}
 </div>
+</div>
+
 <div class="popup-overlay" id="popup">
 <div class="popup-card">
-<div class="popup-header"><h3 id="popupTitle"></h3><button class="popup-close" onclick="closePopup()">&times;</button></div>
-<div class="popup-body"><div id="popupVideo" class="popup-video" style="display:none"><iframe id="popupIframe" src="" allowfullscreen></iframe></div><div id="popupContent"></div></div>
-</div></div>
-<script>
-var nd=${exportNodes};
-function fn(id){return nd.find(function(n){return n.id===id})}
-function getEmbedUrl(url) {
-    if (!url) return '';
-    if (url.includes('/embed/')) return url;
-    let vid = '';
-    if (url.includes('v=')) vid = url.split('v=')[1].split('&')[0];
-    else if (url.includes('youtu.be/')) vid = url.split('youtu.be/')[1].split('?')[0];
-    return vid ? 'https://www.youtube.com/embed/' + vid : url;
+<div class="popup-header">
+    <h3 id="popupTitle"></h3>
+    <button class="popup-close" onclick="closePopup()">&times;</button>
+</div>
+<div class="popup-body">
+    <div id="popupContent"></div>
+    <div id="popupVideo" style="display:none;margin-top:20px">
+        <a id="popupYtLink" href="#" target="_blank" rel="noopener noreferrer" class="yt-link-btn">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            <span>Watch on YouTube</span>
+        </a>
+    </div>
+</div>
+</div>
+</div>
+
+` + '<' + 'script type="application/json" id="roadmapFullData">' + fullDataJSON + '<' + '/script>' + `
+
+` + '<' + 'script>' + `
+var nd = ` + exportNodes + `;
+
+function fn(id) { for (var i = 0; i < nd.length; i++) { if (nd[i].id === id) return nd[i]; } return null; }
+
+var nodes = document.querySelectorAll('.rm-node');
+for (var i = 0; i < nodes.length; i++) {
+    (function(el) {
+        el.addEventListener('click', function() {
+            var n = fn(el.getAttribute('data-id'));
+            if (!n) return;
+            document.getElementById('popupTitle').textContent = n.title;
+            document.getElementById('popupContent').innerHTML = n.definition || '<p style="color:#9ca3af">No description.</p>';
+            var v = document.getElementById('popupVideo');
+            var lnk = document.getElementById('popupYtLink');
+            if (n.yt_link) { v.style.display = 'block'; lnk.href = n.yt_link; }
+            else { v.style.display = 'none'; }
+            document.getElementById('popup').classList.add('show');
+        });
+    })(nodes[i]);
 }
-document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=getEmbedUrl(n.yt_link)}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
-function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
-document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
-<\/script>
+
+function closePopup() {
+    document.getElementById('popup').classList.remove('show');
+}
+document.getElementById('popup').addEventListener('click', function(e) {
+    if (e.target === this) closePopup();
+});
+document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePopup(); });
+
+(function() {
+    var canvas = document.getElementById('roadmapCanvas');
+    var wrapper = document.getElementById('canvasWrapper');
+    var cw = ${w};
+    var ch = ${h};
+    function fitCanvas() {
+        var viewW = wrapper.clientWidth;
+        if (viewW < cw) {
+            var s = viewW / cw;
+            canvas.style.transform = 'scale(' + s + ')';
+            canvas.style.transformOrigin = 'top left';
+            wrapper.style.height = (ch * s + 40) + 'px';
+        } else {
+            canvas.style.transform = 'none';
+            wrapper.style.height = 'auto';
+        }
+    }
+    fitCanvas();
+    window.addEventListener('resize', fitCanvas);
+})();
+` + '<' + '/script>' + `
 </body>
 </html>`;
 }
+
 
 // ===== BOOT =====
 initFirstRoadmap();
