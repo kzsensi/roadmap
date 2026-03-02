@@ -7,7 +7,7 @@
     <title>Roadmap Editor</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=9">
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 
 <body>
@@ -177,19 +177,18 @@
     <div id="detailPanel" class="detail-panel hidden">
         <div class="detail-header">
             <h3 id="detailTitle">Topic</h3>
-            <button id="closeDetailBtn" class="icon-btn">&times;</button>
+            <button id="closeDetailBtn" class="icon-btn close-detail">&times;</button>
         </div>
         <div class="detail-body">
-            <div id="detailVideo" class="detail-video hidden">
-                <div id="detailVideoPlaceholder" class="video-placeholder">
-                    <div class="play-btn"><svg viewBox="0 0 24 24" fill="white">
-                            <polygon points="5 3 19 12 5 21 5 3" />
-                        </svg></div>
-                    <span>Click to play</span>
-                </div>
-                <iframe id="detailIframe" class="hidden" src="" allowfullscreen></iframe>
-            </div>
             <div id="detailContent" class="detail-content"></div>
+            <div id="detailVideo" class="detail-video hidden">
+                <a id="detailYtLink" href="#" target="_blank" rel="noopener noreferrer" class="yt-link-btn">
+                    <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                        <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                    <span>Watch on YouTube</span>
+                </a>
+            </div>
         </div>
     </div>
 
@@ -299,7 +298,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/@panzoom/panzoom@4.5.1/dist/panzoom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-    <script src="script.js?v=9"></script>
+    <script src="script.js?v=10"></script>
 </body>
 
 </html>
