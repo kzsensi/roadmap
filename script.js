@@ -1,1578 +1,1202 @@
-// ============================================================
-// ROADMAP EDITOR - Phase 7
-// ============================================================
-
-// ===== MULTI-ROADMAP MANAGER =====
-const STORAGE_PREFIX = 'roadmapEditor_v3_';
-const META_KEY = 'roadmapEditor_v3_meta';
-
-function getMeta() {
-    try { return JSON.parse(localStorage.getItem(META_KEY)) || []; } catch { return []; }
+/* ===== Reset & Base ===== */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
 }
 
-function saveMeta(meta) {
-    localStorage.setItem(META_KEY, JSON.stringify(meta));
+:root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --border: #d1d5db;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --danger: #ef4444;
+    --selected-ring: #3b82f6;
+    --toolbar-bg: rgba(255, 255, 255, 0.92);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 30px rgba(0, 0, 0, 0.14);
+    --radius: 10px;
+    --radius-lg: 16px;
+    --sidebar-w: 220px;
 }
 
-function saveRoadmap(id, data) {
-    localStorage.setItem(STORAGE_PREFIX + id, JSON.stringify(data));
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
 }
 
-function loadRoadmap(id) {
-    try { return JSON.parse(localStorage.getItem(STORAGE_PREFIX + id)); } catch { return null; }
+/* ===== Layout ===== */
+#sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: var(--sidebar-w);
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.06);
 }
 
-function deleteRoadmapStorage(id) {
-    localStorage.removeItem(STORAGE_PREFIX + id);
+#main {
+    margin-left: var(--sidebar-w);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-function genId() {
-    return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+/* ===== Sidebar ===== */
+.sidebar-header {
+    padding: 14px 14px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--bg);
 }
 
-// ===== DEFAULT DATA =====
-function getDefaultData() {
-    return {
-        nodes: [],
-        connections: [],
-        lineStyle: 'curved-dash'
-    };
+.sidebar-title {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: var(--text-muted);
 }
 
-// ===== STATE =====
-let data = { nodes: [], connections: [], lineStyle: 'curved-dash' };
-let currentRoadmapId = null;
-let selectedId = null;
-let selectedConnId = null;
-let isLocked = false;
-let connectMode = false;
-let connectSource = null;
-let history = [];
-let panzoomInstance = null;
-let currentScale = 1;
-
-// ===== DOM =====
-const canvasWrapper = document.getElementById('canvasWrapper');
-const canvasEl = document.getElementById('canvas');
-const nodesEl = document.getElementById('nodes');
-const linesEl = document.getElementById('lines');
-const btnAddMain = document.getElementById('btnAddMain');
-const btnAddBranch = document.getElementById('btnAddBranch');
-const btnConnect = document.getElementById('btnConnect');
-const btnEdit = document.getElementById('btnEdit');
-const btnDelete = document.getElementById('btnDelete');
-const btnUndo = document.getElementById('btnUndo');
-const btnClear = document.getElementById('btnClear');
-const btnLock = document.getElementById('btnLock');
-const lockText = document.getElementById('lockText');
-const lineStyleSelect = document.getElementById('lineStyleSelect');
-const btnExportToggle = document.getElementById('btnExportToggle');
-const exportMenu = document.getElementById('exportMenu');
-const btnExportJSON = document.getElementById('btnExportJSON');
-const btnExportHTML = document.getElementById('btnExportHTML');
-const btnExportHTMLTransparent = document.getElementById('btnExportHTMLTransparent');
-const btnImport = document.getElementById('btnImport');
-const importFile = document.getElementById('importFile');
-const btnZoomIn = document.getElementById('btnZoomIn');
-const btnZoomOut = document.getElementById('btnZoomOut');
-const btnZoomReset = document.getElementById('btnZoomReset');
-const connectBanner = document.getElementById('connectBanner');
-const cancelConnectBtn = document.getElementById('cancelConnect');
-const roadmapList = document.getElementById('roadmapList');
-const btnNewRoadmap = document.getElementById('btnNewRoadmap');
-// Modals
-const editModal = document.getElementById('editModal');
-const editNodeIdInput = document.getElementById('editNodeId');
-const editTitleInput = document.getElementById('editTitle');
-const editDefInput = document.getElementById('editDefinition');
-const editYtInput = document.getElementById('editYtLink');
-const editColorInput = document.getElementById('editColor');
-const editShapeInput = document.getElementById('editShape');
-const editBorderInput = document.getElementById('editBorder');
-const modalSave = document.getElementById('modalSave');
-const modalCancel = document.getElementById('modalCancel');
-const modalClose = document.getElementById('modalClose');
-const detailPanel = document.getElementById('detailPanel');
-const detailTitle = document.getElementById('detailTitle');
-const detailVideo = document.getElementById('detailVideo');
-const detailVideoPlaceholder = document.getElementById('detailVideoPlaceholder');
-const detailIframe = document.getElementById('detailIframe');
-const detailContent = document.getElementById('detailContent');
-const closeDetailBtn = document.getElementById('closeDetailBtn');
-const welcomeModal = document.getElementById('welcomeModal');
-const btnWelcomeClose = document.getElementById('btnWelcomeClose');
-const dontShowAgain = document.getElementById('dontShowAgain');
-const renameModal = document.getElementById('renameModal');
-const renameInput = document.getElementById('renameInput');
-const renameSave = document.getElementById('renameSave');
-const renameCancel = document.getElementById('renameCancel');
-const renameClose = document.getElementById('renameClose');
-
-// ===== HELPERS =====
-function findNode(id) { return data.nodes.find(n => n.id === id); }
-function getDescendants(id) {
-    const children = data.nodes.filter(n => n.parentId === id);
-    let all = [...children];
-    children.forEach(c => { all = all.concat(getDescendants(c.id)); });
-    return all;
-}
-function getDefaultStyle(type) {
-    return type === 'main'
-        ? { bg: '#3b82f6', textColor: '#ffffff', shape: 'rounded', border: 'solid' }
-        : { bg: '#ffffff', textColor: '#1a1a2e', shape: 'rounded', border: 'solid' };
-}
-function isLightColor(hex) {
-    if (!hex || hex.length < 7) return true;
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return (r * 299 + g * 587 + b * 114) / 1000 > 155;
+.sidebar-header button {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
 }
 
-// ===== TOAST NOTIFICATIONS =====
-const toastContainer = document.getElementById('toastContainer');
-function toast(msg, type) {
-    type = type || 'info';
-    const t = document.createElement('div');
-    t.className = 'toast ' + type;
-    t.textContent = msg;
-    toastContainer.appendChild(t);
-    setTimeout(() => { if (t.parentNode) t.remove(); }, 2200);
+.sidebar-header button:hover {
+    background: var(--primary-hover);
 }
 
-// ===== STATUS BAR =====
-const statusBarEl = document.getElementById('statusBar');
-function updateStatusBar() {
-    const nc = data.nodes ? data.nodes.length : 0;
-    const lc = (data.connections ? data.connections.length : 0) + data.nodes.filter(n => n.parentId).length;
-    const sel = multiSelected ? multiSelected.length : 0;
-    let txt = 'Nodes: ' + nc + ' \u00b7 Lines: ' + lc;
-    if (sel > 0) txt += ' \u00b7 Selected: ' + sel;
-    if (statusBarEl) statusBarEl.textContent = txt;
+#roadmapList {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
 }
 
-// ===== UNDO / REDO =====
-let redoStack = [];
-function pushHistory() {
-    history.push(JSON.stringify(data));
-    if (history.length > 50) history.shift();
-    redoStack = []; // clear redo on any new action
-}
-function undo() {
-    if (!history.length) { toast('Nothing to undo', 'warn'); return; }
-    redoStack.push(JSON.stringify(data));
-    if (redoStack.length > 50) redoStack.shift();
-    const prev = JSON.parse(history.pop());
-    data = prev;
-    save(); render();
-    toast('Undo', 'info');
-}
-function redo() {
-    if (!redoStack.length) { toast('Nothing to redo', 'warn'); return; }
-    history.push(JSON.stringify(data));
-    const next = JSON.parse(redoStack.pop());
-    data = next;
-    save(); render();
-    toast('Redo', 'info');
+.roadmap-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 14px;
+    cursor: pointer;
+    border-radius: 0;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+    gap: 6px;
 }
 
-// ===== SAVE/LOAD =====
-function save() {
-    if (currentRoadmapId) saveRoadmap(currentRoadmapId, data);
-}
-function load(id) {
-    try {
-        const saved = loadRoadmap(id);
-        data = saved || getDefaultData();
-    } catch (e) {
-        console.warn('Failed to load roadmap, using defaults:', e);
-        data = getDefaultData();
-    }
-    // Validate & ensure required fields
-    if (!data.lineStyle) data.lineStyle = 'curved-dash';
-    if (!Array.isArray(data.connections)) data.connections = [];
-    if (!Array.isArray(data.nodes)) data.nodes = [];
-    // Clean orphaned connections
-    const nodeIds = new Set(data.nodes.map(n => n.id));
-    data.connections = data.connections.filter(c => nodeIds.has(c.from) && nodeIds.has(c.to));
-    data.nodes.forEach(n => { if (n.parentId && !nodeIds.has(n.parentId)) n.parentId = null; });
-    lineStyleSelect.value = data.lineStyle;
+.roadmap-item:hover {
+    background: rgba(59, 130, 246, 0.06);
 }
 
-// ===== SIDEBAR / ROADMAP MANAGER =====
-function renderSidebar() {
-    const meta = getMeta();
-    roadmapList.innerHTML = '';
-    if (!meta.length) {
-        roadmapList.innerHTML = '<div style="padding:16px;font-size:12px;color:#9ca3af;text-align:center;">No roadmaps yet.<br>Click + New to start.</div>';
-        return;
-    }
-    meta.forEach(rm => {
-        const item = document.createElement('div');
-        item.className = 'roadmap-item' + (rm.id === currentRoadmapId ? ' active' : '');
-        item.innerHTML = `
-            <span class="roadmap-item-name" title="${rm.name}">${rm.name}</span>
-            <div class="roadmap-actions">
-                <button class="rename-btn" data-id="${rm.id}" title="Rename">✏️</button>
-                <button class="del-btn" data-id="${rm.id}" title="Delete">🗑️</button>
-            </div>`;
-        item.addEventListener('click', (e) => {
-            if (e.target.classList.contains('rename-btn') || e.target.classList.contains('del-btn')) return;
-            switchRoadmap(rm.id);
-        });
-        item.querySelector('.rename-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            openRenameModal(rm.id, rm.name);
-        });
-        item.querySelector('.del-btn').addEventListener('click', (e) => {
-            e.stopPropagation();
-            deleteRoadmapEntry(rm.id);
-        });
-        roadmapList.appendChild(item);
-    });
+.roadmap-item.active {
+    background: rgba(59, 130, 246, 0.1);
+    border-left-color: var(--primary);
 }
 
-function switchRoadmap(id) {
-    if (currentRoadmapId === id) return;
-    save(); // save current first
-    currentRoadmapId = id;
-    selectedId = null; selectedConnId = null;
-    history = [];
-    load(id);
-    renderSidebar();
-    render();
-    centerView();
+.roadmap-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--text);
 }
 
-function createNewRoadmap(name) {
-    const id = genId();
-    const meta = getMeta();
-    meta.push({ id, name: name || 'New Roadmap' });
-    saveMeta(meta);
-    saveRoadmap(id, getDefaultData());
-    switchRoadmap(id);
+.roadmap-item.active .roadmap-item-name {
+    color: var(--primary);
+    font-weight: 600;
 }
 
-function deleteRoadmapEntry(id) {
-    const meta = getMeta().filter(rm => rm.id !== id);
-    saveMeta(meta);
-    deleteRoadmapStorage(id);
-    if (currentRoadmapId === id) {
-        // Switch to first available or create a new one
-        if (meta.length) { switchRoadmap(meta[0].id); }
-        else { createNewRoadmap('My Roadmap'); }
-    } else {
-        renderSidebar();
-    }
+.roadmap-actions {
+    display: flex;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.15s;
 }
 
-function initFirstRoadmap() {
-    let meta = getMeta();
-    if (!meta.length) {
-        const id = genId();
-        meta = [{ id, name: 'Python Roadmap' }];
-        saveMeta(meta);
-        saveRoadmap(id, getDefaultData());
-    }
-    currentRoadmapId = meta[0].id;
-    load(currentRoadmapId);
-    renderSidebar();
+.roadmap-item:hover .roadmap-actions {
+    opacity: 1;
 }
 
-btnNewRoadmap.addEventListener('click', () => {
-    createNewRoadmap('New Roadmap');
-});
-
-// ===== RENAME MODAL =====
-let renamingId = null;
-function openRenameModal(id, name) {
-    renamingId = id;
-    renameInput.value = name;
-    renameModal.classList.remove('hidden');
-    renameInput.focus(); renameInput.select();
-}
-function closeRenameModal() { renameModal.classList.add('hidden'); renamingId = null; }
-renameSave.addEventListener('click', () => {
-    if (!renamingId) return;
-    const meta = getMeta();
-    const rm = meta.find(r => r.id === renamingId);
-    if (rm) { rm.name = renameInput.value.trim() || 'Unnamed'; saveMeta(meta); renderSidebar(); }
-    closeRenameModal();
-});
-[renameCancel, renameClose].forEach(b => b.addEventListener('click', closeRenameModal));
-
-// ===== WELCOME MODAL =====
-function maybeShowWelcome() {
-    if (!localStorage.getItem('roadmapWelcomeSeen')) {
-        welcomeModal.classList.remove('hidden');
-    }
-}
-btnWelcomeClose.addEventListener('click', () => {
-    if (dontShowAgain.checked) localStorage.setItem('roadmapWelcomeSeen', '1');
-    welcomeModal.classList.add('hidden');
-});
-
-// ===== PANZOOM =====
-function initPanzoom() {
-    panzoomInstance = Panzoom(canvasEl, {
-        maxScale: 3,
-        minScale: 0.2,
-        step: 0.1,
-        canvas: true,
-        cursor: 'default',
-        contain: 'outside',
-        excludeClass: 'node',
-    });
-
-    canvasWrapper.addEventListener('wheel', (e) => {
-        if (e.ctrlKey || e.metaKey) {
-            e.preventDefault();
-            panzoomInstance.zoomWithWheel(e);
-        } else {
-            // Pan with regular scroll
-            const { x, y } = panzoomInstance.getPan();
-            panzoomInstance.pan(x - e.deltaX, y - e.deltaY);
-        }
-        updateZoomLabel();
-    }, { passive: false });
-
-    canvasEl.addEventListener('panzoomchange', () => {
-        currentScale = panzoomInstance.getScale();
-        updateZoomLabel();
-    });
+.roadmap-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 3px 5px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: var(--text-muted);
+    transition: background 0.1s, color 0.1s;
 }
 
-function updateZoomLabel() {
-    const pct = Math.round(panzoomInstance.getScale() * 100);
-    btnZoomReset.textContent = pct + '%';
+.roadmap-actions button:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--text);
 }
 
-function centerView() {
-    if (!panzoomInstance) return;
-    // Find the bbox of nodes to center on them
-    if (!data.nodes.length) { panzoomInstance.reset(); return; }
-    const xs = data.nodes.map(n => n.x);
-    const ys = data.nodes.map(n => n.y);
-    const minX = Math.min(...xs), maxX = Math.max(...xs) + 180;
-    const minY = Math.min(...ys), maxY = Math.max(...ys) + 50;
-    const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const scale = 1;
-    const ww = canvasWrapper.clientWidth, wh = canvasWrapper.clientHeight;
-    const x = ww / 2 - cx * scale;
-    const y = wh / 2 - cy * scale;
-    panzoomInstance.zoom(scale, { animate: false });
-    panzoomInstance.pan(x, y, { animate: false });
-    updateZoomLabel();
+.roadmap-actions .del-btn:hover {
+    color: var(--danger);
 }
 
-btnZoomIn.addEventListener('click', () => { panzoomInstance.zoomIn(); updateZoomLabel(); });
-btnZoomOut.addEventListener('click', () => { panzoomInstance.zoomOut(); updateZoomLabel(); });
-btnZoomReset.addEventListener('click', () => { panzoomInstance.reset(); updateZoomLabel(); });
-
-// ===== RENDER =====
-function render() {
-    nodesEl.innerHTML = '';
-    data.nodes.forEach(n => {
-        const el = document.createElement('div');
-        const s = n.style || getDefaultStyle(n.type);
-        el.className = 'node';
-        if (s.shape && s.shape !== 'rounded') el.classList.add('shape-' + s.shape);
-        if (s.border === 'dashed') el.classList.add('border-dashed');
-        if (s.border === 'none') el.classList.add('border-none');
-        if (n.id === selectedId) el.classList.add('selected');
-        if (connectMode && connectSource === n.id) el.classList.add('connect-source');
-        if (multiSelected && multiSelected.includes(n.id)) el.classList.add('multi-selected');
-        el.dataset.id = n.id;
-        el.style.left = n.x + 'px';
-        el.style.top = n.y + 'px';
-        el.style.backgroundColor = s.bg || '#ffffff';
-        el.style.color = s.textColor || '#1a1a2e';
-        el.textContent = n.title;
-
-        el.addEventListener('mousedown', e => e.stopPropagation());
-        el.addEventListener('click', e => { e.stopPropagation(); if (!isRubberBanding) handleNodeClick(n.id); });
-        el.addEventListener('dblclick', e => { e.stopPropagation(); if (!isLocked) { selectNode(n.id); openEditModal(n); } });
-        el.addEventListener('contextmenu', e => showNodeContextMenu(e, n.id));
-        nodesEl.appendChild(el);
-    });
-
-    drawLines();
-    setupDrag();
-    updateToolbar();
-    updateStatusBar();
+/* ===== Toolbar ===== */
+#toolbar {
+    flex-shrink: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding: 0 12px;
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    z-index: 100;
+    /* Do NOT set overflow here — dropdowns must escape the toolbar */
+    position: relative;
 }
 
-// ===== NODE CLICK =====
-function handleNodeClick(id) {
-    if (connectMode) { handleConnectClick(id); return; }
-    if (isLocked) { openDetailPanel(findNode(id)); return; }
-    selectNode(id);
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
-// ===== SELECTION =====
-function selectNode(id) {
-    selectedId = id; selectedConnId = null;
-    document.querySelectorAll('.node').forEach(el => el.classList.toggle('selected', el.dataset.id === id));
-    updateToolbar();
-}
-function deselectAll() {
-    selectedId = null; selectedConnId = null;
-    document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
-    updateToolbar(); drawLines();
-}
-function updateToolbar() {
-    const has = selectedId !== null || selectedConnId !== null;
-    btnAddBranch.disabled = !selectedId;
-    btnEdit.disabled = !selectedId;
-    btnDelete.disabled = !has;
-}
-
-// ===== LINES =====
-function getLinePath(x1, y1, x2, y2, style) {
-    style = style || data.lineStyle || 'curved-dash';
-    if (style === 'curved-dash' || style === 'curved-solid') {
-        const my = (y1 + y2) / 2;
-        return `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
-    }
-    if (style === 'straight-dash' || style === 'straight-solid') {
-        return `M ${x1} ${y1} L ${x2} ${y2}`;
-    }
-    if (style === 'orthogonal') {
-        const my = (y1 + y2) / 2;
-        return `M ${x1} ${y1} L ${x1} ${my} L ${x2} ${my} L ${x2} ${y2}`;
-    }
-    return `M ${x1} ${y1} L ${x2} ${y2}`;
+#toolbar button {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+    white-space: nowrap;
 }
 
-function drawLines() {
-    linesEl.innerHTML = '';
-    data.nodes.forEach(n => {
-        if (!n.parentId) return;
-        const parent = findNode(n.parentId);
-        if (!parent) return;
-        drawOneLine(parent, n, 'parent:' + n.id, n.id === (selectedConnId?.replace('parent:', '')), n.lineStyle);
-    });
-    data.connections.forEach(c => {
-        const from = findNode(c.from), to = findNode(c.to);
-        if (!from || !to) return;
-        drawOneLine(from, to, c.id, c.id === selectedConnId, c.style);
-    });
+#toolbar button:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.06);
 }
 
-function drawOneLine(fromNode, toNode, lineId, isSelected, styleOverride) {
-    const fromEl = nodesEl.querySelector(`[data-id="${fromNode.id}"]`);
-    const toEl = nodesEl.querySelector(`[data-id="${toNode.id}"]`);
-    if (!fromEl || !toEl) return;
-
-    const pw = fromEl.offsetWidth, ph = fromEl.offsetHeight;
-    const cw = toEl.offsetWidth, ch = toEl.offsetHeight;
-    const x1 = fromNode.x + pw / 2, y1 = fromNode.y + ph / 2;
-    const x2 = toNode.x + cw / 2, y2 = toNode.y + ch / 2;
-    const actualStyle = styleOverride || data.lineStyle || 'curved-dash';
-    const d = getLinePath(x1, y1, x2, y2, actualStyle);
-
-    // Invisible hitbox path — used only for isPointInStroke() hit testing
-    const hitbox = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    hitbox.setAttribute('d', d);
-    hitbox.setAttribute('class', 'connector-line-hitbox');
-    hitbox.dataset.lineId = lineId;
-    linesEl.appendChild(hitbox);
-
-    // Visible line
-    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-    path.setAttribute('d', d);
-    path.setAttribute('class', (isSelected ? 'connector-line-selected' : 'connector-line') + ' style-' + actualStyle);
-    linesEl.appendChild(path);
+#toolbar button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
 }
 
-// ===== LINE HIT-TESTING (works despite SVG pointer-events: none) =====
-function getLineIdAtPoint(clientX, clientY) {
-    const svg = linesEl;
-    const pt = svg.createSVGPoint();
-    // Convert client coords to SVG coords accounting for panzoom transforms
-    const ctm = svg.getScreenCTM();
-    if (!ctm) return null;
-    pt.x = clientX;
-    pt.y = clientY;
-    const svgPt = pt.matrixTransform(ctm.inverse());
-
-    const hitboxes = svg.querySelectorAll('.connector-line-hitbox');
-    for (const hb of hitboxes) {
-        try {
-            if (hb.isPointInStroke(svgPt)) {
-                return hb.dataset.lineId;
-            }
-        } catch (e) { /* ignore */ }
-    }
-    return null;
+#toolbar button.active {
+    background: var(--primary);
+    color: white;
 }
 
-// Click on empty canvas area — check if we hit a line
-canvasWrapper.addEventListener('click', e => {
-    if (e.target.closest('.node') || e.target.closest('.ctx-menu')) return;
-    const lineId = getLineIdAtPoint(e.clientX, e.clientY);
-    if (lineId) {
-        e.stopPropagation();
-        selectedConnId = lineId; selectedId = null;
-        document.querySelectorAll('.node.selected').forEach(el => el.classList.remove('selected'));
-        updateToolbar(); drawLines();
-    }
-});
-
-// Right-click on empty canvas area — check if we hit a line
-canvasWrapper.addEventListener('contextmenu', e => {
-    if (e.target.closest('.node') || e.target.closest('.ctx-menu')) return;
-    const lineId = getLineIdAtPoint(e.clientX, e.clientY);
-    if (lineId) {
-        e.preventDefault();
-        e.stopPropagation();
-        showLineContextMenu(e, lineId);
-    }
-}, true);
-
-// ===== DRAG =====
-function setupDrag() {
-    interact('.node').draggable({
-        inertia: false,
-        listeners: {
-            start(event) {
-                if (isLocked || connectMode) return;
-                event.target.classList.add('dragging');
-                const dragId = event.target.dataset.id;
-                // If dragging a multi-selected node, move them all
-                if (multiSelected.length > 0 && !multiSelected.includes(dragId)) {
-                    // Clicking a non-selected node during multi-select clears selection
-                    clearMultiSelect();
-                }
-                selectNode(dragId);
-                pushHistory();
-            },
-            move(event) {
-                if (isLocked || connectMode) return;
-                const dragId = event.target.dataset.id;
-                const n = findNode(dragId);
-                if (!n) return;
-                let dx = event.dx / currentScale;
-                let dy = event.dy / currentScale;
-                // Shift = axis lock
-                if (event.shiftKey) {
-                    if (Math.abs(event.dx) >= Math.abs(event.dy)) dy = 0;
-                    else dx = 0;
-                }
-                // Group drag: move all multi-selected nodes together
-                if (multiSelected.length > 1 && multiSelected.includes(dragId)) {
-                    multiSelected.forEach(id => {
-                        const node = findNode(id);
-                        if (!node) return;
-                        node.x += dx; node.y += dy;
-                        const el = nodesEl.querySelector('[data-id="' + id + '"]');
-                        if (el) { el.style.left = node.x + 'px'; el.style.top = node.y + 'px'; }
-                    });
-                } else {
-                    n.x += dx; n.y += dy;
-                    event.target.style.left = n.x + 'px';
-                    event.target.style.top = n.y + 'px';
-                }
-                drawLines();
-            },
-            end(event) {
-                event.target.classList.remove('dragging');
-                save();
-            }
-        }
-    });
+#toolbar button#btnDelete:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--danger);
 }
 
-// ===== ADD MAIN =====
-btnAddMain.addEventListener('click', () => {
-    if (isLocked) return;
-    pushHistory();
-    const pan = panzoomInstance.getPan();
-    const scale = panzoomInstance.getScale();
-    const cx = (-pan.x + canvasWrapper.clientWidth / 2) / scale;
-    const cy = (-pan.y + canvasWrapper.clientHeight / 2) / scale;
-    const n = { id: genId(), title: 'New Module', type: 'main', x: cx - 70, y: cy - 20, parentId: null, definition: '', yt_link: '', style: getDefaultStyle('main') };
-    data.nodes.push(n);
-    save(); render(); selectNode(n.id);
-});
-
-// ===== ADD BRANCH =====
-btnAddBranch.addEventListener('click', () => {
-    if (isLocked || !selectedId) return;
-    const parent = findNode(selectedId);
-    if (!parent) return;
-    pushHistory();
-    const n = { id: genId(), title: 'New Topic', type: 'branch', x: parent.x + 40 + Math.random() * 60, y: parent.y + 120, parentId: parent.id, definition: '', yt_link: '', style: getDefaultStyle('branch') };
-    data.nodes.push(n);
-    save(); render(); selectNode(n.id);
-});
-
-// ===== CONNECT MODE =====
-btnConnect.addEventListener('click', () => {
-    if (isLocked) return;
-    connectMode = !connectMode; connectSource = null;
-    btnConnect.classList.toggle('active', connectMode);
-    document.body.classList.toggle('connect-mode', connectMode);
-    connectBanner.classList.toggle('hidden', !connectMode);
-    if (!connectMode) render();
-});
-cancelConnectBtn.addEventListener('click', exitConnectMode);
-
-function exitConnectMode() {
-    connectMode = false; connectSource = null;
-    btnConnect.classList.remove('active');
-    document.body.classList.remove('connect-mode');
-    connectBanner.classList.add('hidden');
-    render();
+#toolbar select {
+    padding: 8px 12px;
+    border: 1.5px solid var(--border);
+    border-radius: 7px;
+    background: var(--surface);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    outline: none;
 }
 
-function handleConnectClick(id) {
-    if (!connectSource) {
-        connectSource = id;
-        document.querySelectorAll('.node').forEach(el => el.classList.toggle('connect-source', el.dataset.id === id));
-    } else if (connectSource !== id) {
-        const exists = data.connections.some(c => (c.from === connectSource && c.to === id) || (c.from === id && c.to === connectSource));
-        if (!exists) {
-            pushHistory();
-            data.connections.push({ id: genId(), from: connectSource, to: id });
-            save();
-            toast('Connected!', 'success');
-        } else {
-            toast('Already connected', 'warn');
-        }
-        exitConnectMode();
-    } else {
-        // Self-connect: prevent it
-        toast('Cannot connect a node to itself', 'warn');
-        connectSource = null;
-        render();
-    }
+#toolbar select:focus {
+    border-color: var(--primary);
 }
 
-// ===== CLEAR CANVAS =====
-btnClear.addEventListener('click', () => {
-    if (isLocked) return;
-    if (data.nodes.length === 0 && data.connections.length === 0) {
-        toast('Canvas is already empty', 'warn');
-        return;
-    }
-    if (confirm('Are you sure you want to completely clear this canvas? This will remove all nodes and connections.')) {
-        pushHistory();
-        data.nodes = [];
-        data.connections = [];
-        clearMultiSelect();
-        deselectAll();
-        panzoomInstance.reset();
-        save();
-        render();
-        toast('Canvas cleared! (Press Ctrl+Z to undo)', 'success');
-    }
-});
-
-// ===== DELETE =====
-btnDelete.addEventListener('click', () => {
-    if (isLocked) return;
-    if (selectedConnId) {
-        pushHistory();
-        if (selectedConnId.startsWith('parent:')) {
-            const child = findNode(selectedConnId.replace('parent:', ''));
-            if (child) child.parentId = null;
-        } else {
-            data.connections = data.connections.filter(c => c.id !== selectedConnId);
-        }
-        selectedConnId = null; save(); render(); return;
-    }
-    if (!selectedId) return;
-    pushHistory();
-    const idsToRemove = new Set([selectedId, ...getDescendants(selectedId).map(d => d.id)]);
-    data.nodes = data.nodes.filter(n => !idsToRemove.has(n.id));
-    data.connections = data.connections.filter(c => !idsToRemove.has(c.from) && !idsToRemove.has(c.to));
-    selectedId = null; save(); render();
-});
-
-// ===== UNDO =====
-btnUndo.addEventListener('click', undo);
-
-// ===== LINE STYLE =====
-lineStyleSelect.addEventListener('change', () => {
-    pushHistory();
-    data.lineStyle = lineStyleSelect.value;
-    save(); drawLines();
-});
-
-// ===== LOCK =====
-btnLock.addEventListener('click', () => {
-    isLocked = !isLocked;
-    document.body.classList.toggle('locked', isLocked);
-    lockText.textContent = isLocked ? 'Unlock' : 'Lock';
-    if (isLocked) { deselectAll(); exitConnectMode(); }
-    render();
-});
-
-// ===== DETAIL PANEL =====
-function openDetailPanel(node) {
-    if (!node) return;
-    detailTitle.textContent = node.title;
-    detailContent.innerHTML = node.definition || '<p style="color:#9ca3af">No description yet.</p>';
-    if (node.yt_link) {
-        detailVideo.classList.remove('hidden');
-        detailIframe.classList.add('hidden');
-        detailVideoPlaceholder.classList.remove('hidden');
-        detailIframe.src = '';
-        const playHandler = () => {
-            detailVideoPlaceholder.classList.add('hidden');
-            detailIframe.classList.remove('hidden');
-            detailIframe.src = getEmbedUrl(node.yt_link);
-            detailVideoPlaceholder.removeEventListener('click', playHandler);
-        };
-        detailVideoPlaceholder.addEventListener('click', playHandler);
-    } else { detailVideo.classList.add('hidden'); }
-    detailPanel.classList.remove('hidden');
-}
-closeDetailBtn.addEventListener('click', () => { detailPanel.classList.add('hidden'); detailIframe.src = ''; });
-
-// ===== EDIT MODAL =====
-function openEditModal(node) {
-    editNodeIdInput.value = node.id;
-    editTitleInput.value = node.title;
-    editDefInput.value = node.definition || '';
-    editYtInput.value = node.yt_link || '';
-    const s = node.style || getDefaultStyle(node.type);
-    editColorInput.value = s.bg || '#ffffff';
-    editShapeInput.value = s.shape || 'rounded';
-    editBorderInput.value = s.border || 'solid';
-    editModal.classList.remove('hidden');
-    editTitleInput.focus();
-}
-function closeModal() { editModal.classList.add('hidden'); }
-btnEdit.addEventListener('click', () => { if (!selectedId || isLocked) return; openEditModal(findNode(selectedId)); });
-[modalCancel, modalClose].forEach(b => b.addEventListener('click', closeModal));
-modalSave.addEventListener('click', () => {
-    const n = findNode(editNodeIdInput.value);
-    if (!n) return;
-    pushHistory();
-    n.title = editTitleInput.value.trim() || 'Untitled';
-    n.definition = editDefInput.value;
-    n.yt_link = editYtInput.value;
-    if (!n.style) n.style = getDefaultStyle(n.type);
-    n.style.bg = editColorInput.value;
-    n.style.shape = editShapeInput.value;
-    n.style.border = editBorderInput.value;
-    n.style.textColor = isLightColor(n.style.bg) ? '#1a1a2e' : '#ffffff';
-    save(); closeModal(); render(); selectNode(n.id);
-});
-
-// ===== EXPORT JSON =====
-btnExportJSON.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'roadmap.json'; a.click();
-    URL.revokeObjectURL(url);
-    exportMenu.classList.remove('show');
-});
-
-// ===== EXPORT HTML =====
-btnExportHTML.addEventListener('click', () => { doExportHTML('#ffffff'); exportMenu.classList.remove('show'); });
-btnExportHTMLTransparent.addEventListener('click', () => { doExportHTML('transparent'); exportMenu.classList.remove('show'); });
-
-function doExportHTML(bgColor) {
-    const html = generateStaticHTML(bgColor);
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'roadmap.html'; a.click();
-    URL.revokeObjectURL(url);
+.toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
 }
 
-function generateStaticHTML(bgColor) {
-    bgColor = bgColor || '#ffffff';
-    const nodeSizes = {};
-    data.nodes.forEach(n => {
-        const el = nodesEl.querySelector(`[data-id="${n.id}"]`);
-        nodeSizes[n.id] = el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 150, h: 44 };
-    });
+body.locked #btnAddMain,
+body.locked #btnAddBranch,
+body.locked #btnConnect,
+body.locked #btnEdit,
+body.locked #btnDelete,
+body.locked #btnUndo,
+body.locked #lineStyleSelect {
+    display: none;
+}
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    data.nodes.forEach(n => {
-        let sz = nodeSizes[n.id];
-        if (!sz || sz.w === 0 || sz.h === 0) sz = { w: 150, h: 44 };
-        minX = Math.min(minX, n.x);
-        minY = Math.min(minY, n.y);
-        maxX = Math.max(maxX, n.x + sz.w);
-        maxY = Math.max(maxY, n.y + sz.h);
-    });
+/* ===== Canvas Wrapper ===== */
+#canvasWrapper {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    cursor: grab;
+}
 
-    // Default values if canvas is empty
-    if (minX === Infinity) { minX = 0; minY = 0; maxX = 800; maxY = 600; }
-    const pad = 60, w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
-    const dx = minX - pad;
-    const dy = minY - pad;
+#canvasWrapper:active {
+    cursor: grabbing;
+}
 
-    function lineD(from, to, styleOverride) {
-        let fw = nodeSizes[from.id]?.w; if (!fw) fw = 150;
-        let fh = nodeSizes[from.id]?.h; if (!fh) fh = 44;
-        let tw = nodeSizes[to.id]?.w; if (!tw) tw = 150;
-        let th = nodeSizes[to.id]?.h; if (!th) th = 44;
-        return getLinePath((from.x - dx) + fw / 2, (from.y - dy) + fh / 2, (to.x - dx) + tw / 2, (to.y - dy) + th / 2, styleOverride || data.lineStyle);
+/* Dot grid background */
+#canvasWrapper {
+    background-color: #f0f2f5;
+    background-image: radial-gradient(circle, #c4c8d0 1px, transparent 1px);
+    background-size: 28px 28px;
+}
+
+/* Canvas (the panzoom-able element) */
+#canvas {
+    position: relative;
+    width: 8000px;
+    height: 8000px;
+    transform-origin: 0 0;
+}
+
+#lines {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 3;
+    pointer-events: none;
+}
+
+#nodes {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 5;
+}
+
+/* ===== Nodes ===== */
+.node {
+    position: absolute;
+    min-width: 140px;
+    max-width: 260px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+    touch-action: none;
+    border: 2px solid rgba(0, 0, 0, 0.12);
+    z-index: 5;
+    white-space: nowrap;
+    background: var(--surface);
+    color: var(--text);
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+.node:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-1px);
+}
+
+.node:active {
+    cursor: grabbing;
+}
+
+.node.selected {
+    outline: 3px solid var(--selected-ring);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(59, 130, 246, 0.12), var(--shadow-lg);
+    transform: none;
+}
+
+.node.dragging {
+    opacity: 0.88;
+    z-index: 100;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.18);
+    transform: scale(1.02);
+}
+
+/* Shapes */
+.node.shape-pill {
+    border-radius: 100px;
+}
+
+.node.shape-square {
+    border-radius: 4px;
+}
+
+.node.border-dashed {
+    border-style: dashed;
+}
+
+.node.border-none {
+    border: none;
+}
+
+/* Locked mode */
+body.locked .node {
+    cursor: pointer;
+}
+
+body.locked .node:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+/* Connect mode */
+body.connect-mode .node {
+    cursor: crosshair;
+}
+
+body.connect-mode .node.connect-source {
+    outline: 3px solid #f59e0b;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.2);
+}
+
+/* ===== SVG Lines ===== */
+.connector-line {
+    stroke: #94a3b8;
+    stroke-width: 2;
+    fill: none;
+    pointer-events: none;
+}
+
+.connector-line.style-curved-dash {
+    stroke-dasharray: 8 5;
+}
+
+.connector-line.style-straight-dash {
+    stroke-dasharray: 6 4;
+}
+
+.connector-line.style-curved-solid,
+.connector-line.style-straight-solid,
+.connector-line.style-orthogonal {
+    stroke-dasharray: none;
+}
+
+.connector-line-hitbox {
+    stroke: transparent;
+    stroke-width: 14;
+    fill: none;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
+.connector-line-selected {
+    stroke: var(--danger);
+    stroke-width: 2.5;
+    fill: none;
+    pointer-events: none;
+    stroke-dasharray: 8 5;
+}
+
+/* ===== Connect Banner ===== */
+.connect-banner {
+    position: fixed;
+    top: 62px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 999;
+    background: #fef3c7;
+    border: 1.5px solid #f59e0b;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-md);
+    margin-left: calc(var(--sidebar-w) / 2);
+}
+
+.connect-banner.hidden {
+    display: none;
+}
+
+.btn-sm {
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+/* ===== Dropdown ===== */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    min-width: 200px;
+    z-index: 1001;
+}
+
+.dropdown-menu.show {
+    display: block;
+}
+
+.dropdown-label {
+    padding: 8px 14px 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--bg);
+}
+
+.dropdown-menu button {
+    display: block;
+    width: 100%;
+    padding: 9px 14px;
+    text-align: left;
+    border-radius: 0;
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    cursor: pointer;
+}
+
+.dropdown-menu button:hover {
+    background: var(--bg);
+}
+
+/* ===== Detail Panel ===== */
+.detail-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08);
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    transform: translateX(0);
+    transition: transform 0.25s ease;
+}
+
+.detail-panel.hidden {
+    transform: translateX(100%);
+    pointer-events: none;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.detail-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.detail-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.detail-video {
+    margin-bottom: 18px;
+    border-radius: 10px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    background: #0f172a;
+}
+
+.detail-video.hidden {
+    display: none;
+}
+
+.detail-video iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.video-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 13px;
+}
+
+.play-btn {
+    width: 46px;
+    height: 46px;
+    background: #ef4444;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.play-btn svg {
+    width: 18px;
+    height: 18px;
+    margin-left: 3px;
+}
+
+.detail-content {
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+    white-space: pre-wrap;
+}
+
+.detail-content h4 {
+    margin-bottom: 8px;
+    font-size: 15px;
+}
+
+.detail-content p {
+    margin-bottom: 10px;
+}
+
+.detail-content code {
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12.5px;
+}
+
+/* ===== Modals ===== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(4px);
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal-card {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 520px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: modalIn 0.18s ease;
+}
+
+@keyframes modalIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
     }
 
-    function getDashStyle(s) {
-        s = s || data.lineStyle || 'curved-dash';
-        if (s.includes('solid') || s === 'orthogonal') return 'none';
-        if (s.includes('straight-dash')) return '6 4';
-        return '8 5';
+    to {
+        opacity: 1;
+        transform: scale(1);
     }
-
-    let svgPaths = '';
-    data.nodes.forEach(n => {
-        if (!n.parentId) return;
-        const p = findNode(n.parentId);
-        if (!p) return;
-        svgPaths += `<path d="${lineD(p, n, n.lineStyle)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashStyle(n.lineStyle)}" fill="none"/>\n`;
-    });
-    data.connections.forEach(c => {
-        const f = findNode(c.from), t = findNode(c.to);
-        if (!f || !t) return;
-        svgPaths += `<path d="${lineD(f, t, c.style)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${getDashStyle(c.style)}" fill="none"/>\n`;
-    });
-
-    const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\/script>/gi, '<\\/script>');
-
-    let nodeDivs = '';
-    data.nodes.forEach(n => {
-        const s = n.style || getDefaultStyle(n.type);
-        let br = '10px'; if (s.shape === 'pill') br = '100px'; if (s.shape === 'square') br = '4px';
-        let border = s.border === 'none' ? 'none' : `2px ${s.border || 'solid'} rgba(0,0,0,0.12)`;
-        nodeDivs += `<div class="rm-node" data-id="${n.id}" style="position:absolute;left:${n.x - dx}px;top:${n.y - dy}px;min-width:120px;max-width:240px;padding:11px 18px;border-radius:${br};font-size:13.5px;font-weight:600;text-align:center;background:${s.bg};color:${s.textColor};border:${border};box-shadow:0 1px 3px rgba(0,0,0,0.08);white-space:nowrap;cursor:pointer;">${n.title}</div>\n`;
-    });
-
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roadmap</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
-.canvas{position:relative;width:${w}px;height:${h}px;margin:20px auto}
-.rm-node{transition:box-shadow .15s,transform .12s}
-.rm-node:hover{box-shadow:0 6px 20px rgba(0,0,0,0.15)!important;transform:translateY(-2px)}
-.popup-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);align-items:center;justify-content:center}
-.popup-overlay.show{display:flex}
-.popup-card{background:#fff;border-radius:16px;width:92%;max-width:540px;max-height:85vh;overflow:hidden;box-shadow:0 12px 50px rgba(0,0,0,0.2);display:flex;flex-direction:column;animation:popIn .2s ease}
-@keyframes popIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
-.popup-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f9fafb}
-.popup-header h3{font-size:17px;font-weight:700;margin:0;color:#1a1a2e}
-.popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280;transition:color .15s}
-.popup-close:hover{color:#ef4444}
-.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e}
-.popup-body h4{margin-bottom:8px;font-size:15px}
-.popup-body p{margin-bottom:10px}
-.popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
-.popup-video{margin-bottom:16px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#0f172a}
-.popup-video iframe{width:100%;height:100%;border:none}
-</style>
-</head>
-<body>
-<div class="canvas">
-<svg viewBox="0 0 ${w} ${h}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:visible;">
-${svgPaths}
-</svg>
-${nodeDivs}
-</div>
-<div class="popup-overlay" id="popup">
-<div class="popup-card">
-<div class="popup-header"><h3 id="popupTitle"></h3><button class="popup-close" onclick="closePopup()">&times;</button></div>
-<div class="popup-body"><div id="popupVideo" class="popup-video" style="display:none"><iframe id="popupIframe" src="" allowfullscreen></iframe></div><div id="popupContent"></div></div>
-</div></div>
-<script>
-var nd=${exportNodes};
-function fn(id){return nd.find(function(n){return n.id===id})}
-document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=n.yt_link}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
-function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
-document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
-<\/script>
-</body>
-</html>`;
 }
 
-function getDashArray() {
-    const s = data.lineStyle || 'curved-dash';
-    if (s.includes('solid') || s === 'orthogonal') return 'none';
-    if (s.includes('straight-dash')) return '6 4';
-    return '8 5';
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
 }
 
-// ===== IMPORT =====
-btnImport.addEventListener('click', () => importFile.click());
-importFile.addEventListener('change', e => {
-    const file = e.target.files[0]; if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => {
-        try {
-            const parsed = JSON.parse(ev.target.result);
-            pushHistory();
-            if (parsed.nodes && Array.isArray(parsed.nodes)) {
-                data = { nodes: parsed.nodes, connections: parsed.connections || [], lineStyle: parsed.lineStyle || 'curved-dash' };
-            } else if (Array.isArray(parsed)) {
-                data = { nodes: parsed, connections: [], lineStyle: 'curved-dash' };
-            } else { alert('Invalid format.'); return; }
-            save(); render(); centerView();
-            lineStyleSelect.value = data.lineStyle;
-        } catch { alert('Failed to parse JSON.'); }
-    };
-    reader.readAsText(file); importFile.value = '';
-});
-
-// ===== EXPORT DROPDOWN =====
-btnExportToggle.addEventListener('click', e => {
-    e.stopPropagation();
-    const show = !exportMenu.classList.contains('show');
-    exportMenu.classList.toggle('show', show);
-    if (show) {
-        const rect = btnExportToggle.getBoundingClientRect();
-        exportMenu.style.left = rect.left + 'px';
-        exportMenu.style.top = (rect.bottom + 6) + 'px';
-    }
-});
-document.addEventListener('click', () => exportMenu.classList.remove('show'));
-
-// ===== CANVAS CLICK =====
-canvasEl.addEventListener('click', e => {
-    if (e.target === canvasEl || e.target === nodesEl || e.target === linesEl || e.target.tagName === 'svg') {
-        deselectAll();
-        detailPanel.classList.add('hidden');
-        detailIframe.src = '';
-    }
-});
-
-// ===== KEYBOARD =====
-const shortcutsPanel = document.getElementById('shortcutsPanel');
-const closeShortcutsBtn = document.getElementById('closeShortcuts');
-const btnShortcutsHelp = document.getElementById('btnShortcutsHelp');
-function toggleShortcuts() { shortcutsPanel.classList.toggle('hidden'); }
-if (closeShortcutsBtn) closeShortcutsBtn.addEventListener('click', toggleShortcuts);
-if (btnShortcutsHelp) btnShortcutsHelp.addEventListener('click', toggleShortcuts);
-if (shortcutsPanel) shortcutsPanel.addEventListener('click', e => { if (e.target === shortcutsPanel) toggleShortcuts(); });
-
-document.addEventListener('keydown', e => {
-    // Don't intercept when typing in inputs/textareas
-    const tag = document.activeElement?.tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
-        if (e.key === 'Escape') {
-            if (!editModal.classList.contains('hidden')) closeModal();
-            else if (!renameModal.classList.contains('hidden')) closeRenameModal();
-        }
-        return;
-    }
-    if (!editModal.classList.contains('hidden')) { if (e.key === 'Escape') closeModal(); return; }
-    if (!renameModal.classList.contains('hidden')) { if (e.key === 'Escape') closeRenameModal(); return; }
-    closeCtxMenu();
-
-    // Escape
-    if (e.key === 'Escape') {
-        if (!shortcutsPanel.classList.contains('hidden')) { toggleShortcuts(); return; }
-        if (connectMode) exitConnectMode();
-        else if (!detailPanel.classList.contains('hidden')) { detailPanel.classList.add('hidden'); detailIframe.src = ''; }
-        else { deselectAll(); clearMultiSelect(); }
-    }
-
-    // ? = show shortcuts
-    if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
-        e.preventDefault();
-        toggleShortcuts();
-    }
-
-    // Ctrl+Z = undo
-    if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
-        e.preventDefault(); undo();
-    }
-    // Ctrl+Y or Ctrl+Shift+Z = redo
-    if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault(); redo();
-    }
-    if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && e.shiftKey) {
-        e.preventDefault(); redo();
-    }
-
-    // Delete / Backspace
-    if ((e.key === 'Delete' || e.key === 'Backspace') && document.activeElement === document.body) {
-        if (!isLocked && multiSelected.length > 0) { deleteMultiSelected(); return; }
-        if (!isLocked && (selectedId || selectedConnId)) btnDelete.click();
-    }
-
-    // Ctrl+A = select all
-    if (e.key === 'a' && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        multiSelected = data.nodes.map(n => n.id);
-        render();
-        toast('All nodes selected', 'info');
-    }
-
-    // Ctrl+C = copy
-    if ((e.key === 'c' || e.key === 'C') && (e.ctrlKey || e.metaKey)) {
-        copySelected();
-    }
-    // Ctrl+X = cut
-    if ((e.key === 'x' || e.key === 'X') && (e.ctrlKey || e.metaKey)) {
-        cutSelected();
-    }
-    // Ctrl+V = paste
-    if ((e.key === 'v' || e.key === 'V') && (e.ctrlKey || e.metaKey)) {
-        pasteClipboard();
-    }
-
-    // Ctrl+D = duplicate selected
-    if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey)) {
-        e.preventDefault();
-        duplicateSelected();
-    }
-
-    // Arrow keys = nudge selected node(s)
-    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && document.activeElement === document.body) {
-        const targets = multiSelected.length > 0 ? multiSelected : (selectedId ? [selectedId] : []);
-        if (targets.length === 0) return;
-        e.preventDefault();
-        const step = e.shiftKey ? 10 : 1;
-        pushHistory();
-        targets.forEach(id => {
-            const n = findNode(id);
-            if (!n) return;
-            if (e.key === 'ArrowLeft') n.x -= step;
-            if (e.key === 'ArrowRight') n.x += step;
-            if (e.key === 'ArrowUp') n.y -= step;
-            if (e.key === 'ArrowDown') n.y += step;
-        });
-        save(); render();
-    }
-});
-
-// ===== CLIPBOARD (Copy/Paste/Duplicate) =====
-let clipboard = { nodes: [], connections: [] };
-let pasteCount = 0; // track successive pastes for offset
-
-function copySelected() {
-    const toCopy = multiSelected.length > 0 ? multiSelected : (selectedId ? [selectedId] : []);
-    if (toCopy.length === 0) { toast('Nothing to copy', 'warn'); return; }
-
-    const copiedNodes = toCopy.map(id => {
-        const n = findNode(id);
-        return n ? JSON.parse(JSON.stringify(n)) : null;
-    }).filter(n => n);
-
-    const copiedIds = new Set(copiedNodes.map(n => n.id));
-    const copiedConns = data.connections.filter(c => copiedIds.has(c.from) && copiedIds.has(c.to));
-
-    clipboard = {
-        nodes: copiedNodes,
-        connections: JSON.parse(JSON.stringify(copiedConns))
-    };
-    pasteCount = 0;
-    try { localStorage.setItem('roadmapEditorClipboard', JSON.stringify(clipboard)); } catch (e) { }
-    toast('Copied ' + copiedNodes.length + ' node(s)', 'success');
+.modal-header h3 {
+    font-size: 16px;
+    font-weight: 700;
 }
 
-function cutSelected() {
-    const count = multiSelected.length > 0 ? multiSelected.length : (selectedId ? 1 : 0);
-    copySelected();
-    if (multiSelected.length > 0) deleteMultiSelected();
-    else if (selectedId) btnDelete.click();
-    if (count > 0) toast('Cut ' + count + ' node(s)', 'success');
+.icon-btn {
+    background: none;
+    border: none;
+    font-size: 22px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0 3px;
 }
 
-function pasteClipboard() {
-    if (isLocked) { toast('Canvas is locked', 'warn'); return; }
-    let cb = JSON.parse(JSON.stringify(clipboard)); // deep copy so we can paste multiple times
-    if (!cb || !cb.nodes || cb.nodes.length === 0) {
-        try { cb = JSON.parse(localStorage.getItem('roadmapEditorClipboard')); } catch (e) { }
-    }
-    if (!cb || !cb.nodes || cb.nodes.length === 0) { toast('Clipboard is empty', 'warn'); return; }
-
-    pushHistory();
-    clearMultiSelect();
-    deselectAll();
-
-    const idMap = {};
-    pasteCount++;
-    const offset = 30 * pasteCount;
-
-    // Deep copy nodes to avoid mutating the clipboard
-    const newNodes = JSON.parse(JSON.stringify(cb.nodes));
-    newNodes.forEach(n => {
-        const oldId = n.id;
-        const newId = genId();
-        idMap[oldId] = newId;
-
-        n.id = newId;
-        n.x += offset;
-        n.y += offset;
-        if (n.parentId && idMap[n.parentId]) n.parentId = idMap[n.parentId];
-        else if (n.parentId && !cb.nodes.find(cn => cn.id === n.parentId)) n.parentId = null;
-
-        data.nodes.push(n);
-        multiSelected.push(newId);
-    });
-
-    if (cb.connections) {
-        cb.connections.forEach(c => {
-            if (!idMap[c.from] || !idMap[c.to]) return;
-            data.connections.push({
-                id: genId(),
-                from: idMap[c.from],
-                to: idMap[c.to]
-            });
-        });
-    }
-
-    save();
-    render();
-    toast('Pasted ' + newNodes.length + ' node(s)', 'success');
+.modal-body {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
 }
 
-function duplicateSelected() {
-    if (isLocked) return;
-    const targets = multiSelected.length > 0 ? multiSelected : (selectedId ? [selectedId] : []);
-    if (targets.length === 0) { toast('Nothing to duplicate', 'warn'); return; }
-
-    pushHistory();
-
-    const srcNodes = targets.map(id => findNode(id)).filter(n => n);
-    const srcIds = new Set(srcNodes.map(n => n.id));
-    const srcConns = data.connections.filter(c => srcIds.has(c.from) && srcIds.has(c.to));
-
-    const idMap = {};
-    clearMultiSelect();
-    deselectAll();
-
-    srcNodes.forEach(orig => {
-        const n = JSON.parse(JSON.stringify(orig));
-        const newId = genId();
-        idMap[orig.id] = newId;
-        n.id = newId;
-        n.x += 30;
-        n.y += 30;
-        if (n.parentId && idMap[n.parentId]) n.parentId = idMap[n.parentId];
-        data.nodes.push(n);
-        multiSelected.push(newId);
-    });
-
-    srcConns.forEach(c => {
-        if (!idMap[c.from] || !idMap[c.to]) return;
-        data.connections.push({ id: genId(), from: idMap[c.from], to: idMap[c.to] });
-    });
-
-    save(); render();
-    toast('Duplicated ' + srcNodes.length + ' node(s)', 'success');
+.modal-body label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
 }
 
-
-// ===== CONTEXT MENU =====
-let ctxMenu = null;
-
-function closeCtxMenu() {
-    if (ctxMenu) { ctxMenu.remove(); ctxMenu = null; }
+.modal-body input[type=text],
+.modal-body input[type=url],
+.modal-body textarea,
+.modal-body select {
+    width: 100%;
+    padding: 9px 11px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13.5px;
+    color: var(--text);
+    background: var(--bg);
+    outline: none;
+    transition: border-color 0.12s;
 }
 
-function buildCtxMenu(x, y, items) {
-    closeCtxMenu();
-    ctxMenu = document.createElement('div');
-    ctxMenu.className = 'ctx-menu';
-    ctxMenu.style.left = x + 'px';
-    ctxMenu.style.top = y + 'px';
-
-    items.forEach(item => {
-        if (item === 'divider') {
-            const d = document.createElement('div'); d.className = 'ctx-divider';
-            ctxMenu.appendChild(d);
-        } else if (item.type === 'section') {
-            const s = document.createElement('div'); s.className = 'ctx-section';
-            s.textContent = item.label; ctxMenu.appendChild(s);
-        } else if (item.type === 'color') {
-            const row = document.createElement('div'); row.className = 'ctx-color-row';
-            const lbl = document.createElement('label'); lbl.textContent = item.label;
-            const inp = document.createElement('input'); inp.type = 'color'; inp.value = item.value || '#3b82f6';
-            inp.addEventListener('input', () => item.onChange(inp.value));
-            inp.addEventListener('change', () => item.onChange(inp.value));
-            row.appendChild(lbl); row.appendChild(inp);
-            ctxMenu.appendChild(row);
-        } else {
-            const btn = document.createElement('button');
-            btn.className = 'ctx-item' + (item.danger ? ' danger' : '') + (item.active ? ' active-item' : '');
-            btn.innerHTML = (item.icon || '') + ' ' + item.label;
-            btn.addEventListener('click', () => { item.action(); closeCtxMenu(); });
-            ctxMenu.appendChild(btn);
-        }
-    });
-
-    document.body.appendChild(ctxMenu);
-
-    // Keep in bounds
-    requestAnimationFrame(() => {
-        const rect = ctxMenu.getBoundingClientRect();
-        if (rect.right > window.innerWidth) ctxMenu.style.left = (x - rect.width) + 'px';
-        if (rect.bottom > window.innerHeight) ctxMenu.style.top = (y - rect.height) + 'px';
-    });
+.modal-body input:focus,
+.modal-body textarea:focus,
+.modal-body select:focus {
+    border-color: var(--primary);
 }
 
-// Node right-click menu
-function showNodeContextMenu(e, nodeId) {
-    e.preventDefault(); e.stopPropagation();
-    const n = findNode(nodeId);
-    if (!n) return;
-    if (!isLocked) selectNode(nodeId);
-    const s = n.style || getDefaultStyle(n.type);
-
-    buildCtxMenu(e.clientX, e.clientY, [
-        { type: 'section', label: n.title },
-        { icon: '✏️', label: 'Edit…', action: () => { selectNode(nodeId); openEditModal(n); } },
-        'divider',
-        { type: 'section', label: 'Color' },
-        {
-            type: 'color', label: 'Background', value: s.bg, onChange: (v) => {
-                pushHistory();
-                n.style = n.style || getDefaultStyle(n.type);
-                n.style.bg = v;
-                n.style.textColor = isLightColor(v) ? '#1a1a2e' : '#ffffff';
-                save(); render(); selectNode(nodeId);
-            }
-        },
-        'divider',
-        { type: 'section', label: 'Shape' },
-        { icon: s.shape === 'rounded' ? '✓' : '', label: '⬜ Rounded', active: s.shape === 'rounded', action: () => applyNodeStyle(nodeId, { shape: 'rounded' }) },
-        { icon: s.shape === 'pill' ? '✓' : '', label: '💊 Pill', active: s.shape === 'pill', action: () => applyNodeStyle(nodeId, { shape: 'pill' }) },
-        { icon: s.shape === 'square' ? '✓' : '', label: '🔲 Square', active: s.shape === 'square', action: () => applyNodeStyle(nodeId, { shape: 'square' }) },
-        'divider',
-        { type: 'section', label: 'Border' },
-        { label: '— Solid', active: s.border === 'solid', action: () => applyNodeStyle(nodeId, { border: 'solid' }) },
-        { label: '- - Dashed', active: s.border === 'dashed', action: () => applyNodeStyle(nodeId, { border: 'dashed' }) },
-        { label: '✕ None', active: s.border === 'none', action: () => applyNodeStyle(nodeId, { border: 'none' }) },
-        'divider',
-        {
-            icon: '🗑️', label: 'Delete node', danger: true, action: () => {
-                if (isLocked) return;
-                pushHistory();
-                const idsToRemove = new Set([nodeId, ...getDescendants(nodeId).map(d => d.id)]);
-                data.nodes = data.nodes.filter(n => !idsToRemove.has(n.id));
-                data.connections = data.connections.filter(c => !idsToRemove.has(c.from) && !idsToRemove.has(c.to));
-                selectedId = null; save(); render();
-            }
-        },
-    ]);
+.modal-body textarea {
+    resize: vertical;
+    font-family: monospace;
+    font-size: 12px;
 }
 
-function applyNodeStyle(nodeId, stylePatch) {
-    const n = findNode(nodeId);
-    if (!n) return;
-    pushHistory();
-    n.style = Object.assign(n.style || getDefaultStyle(n.type), stylePatch);
-    save(); render(); selectNode(nodeId);
+.style-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
 }
 
-// Line right-click menu (stored for hitbox right-click)
-function showLineContextMenu(e, lineId) {
-    e.preventDefault(); e.stopPropagation();
-
-    let isParentConn = lineId.startsWith('parent:');
-    let targetObj = isParentConn ? findNode(lineId.replace('parent:', '')) : data.connections.find(c => c.id === lineId);
-    let cur = (isParentConn ? targetObj?.lineStyle : targetObj?.style) || data.lineStyle;
-
-    const lineTypes = [
-        { value: 'curved-dash', label: '⋯ Curved Dotted' },
-        { value: 'curved-solid', label: '— Curved Solid' },
-        { value: 'straight-dash', label: '- - Straight Dashed' },
-        { value: 'straight-solid', label: '— Straight Solid' },
-        { value: 'orthogonal', label: '⌐ Orthogonal' },
-    ];
-    buildCtxMenu(e.clientX, e.clientY, [
-        { type: 'section', label: 'Line Style (This line only)' },
-        ...lineTypes.map(lt => ({
-            icon: lt.value === cur ? '✓' : '',
-            label: lt.label,
-            active: cur === lt.value,
-            action: () => {
-                pushHistory();
-                if (targetObj) {
-                    if (isParentConn) targetObj.lineStyle = lt.value;
-                    else targetObj.style = lt.value;
-                }
-                save(); drawLines();
-            }
-        })),
-        'divider',
-        {
-            icon: '🗑️', label: 'Delete this line', danger: true, action: () => {
-                if (isLocked) return;
-                pushHistory();
-                if (lineId.startsWith('parent:')) {
-                    const child = findNode(lineId.replace('parent:', ''));
-                    if (child) child.parentId = null;
-                } else {
-                    data.connections = data.connections.filter(c => c.id !== lineId);
-                }
-                selectedConnId = null; save(); render();
-            }
-        },
-    ]);
+.style-row input[type=color] {
+    width: 100%;
+    height: 36px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 2px;
+    cursor: pointer;
 }
 
-
-
-// Close context menu on outside click
-document.addEventListener('click', () => closeCtxMenu());
-document.addEventListener('contextmenu', e => {
-    if (!e.target.closest('.ctx-menu') && !e.target.closest('.node') && !e.target.closest('.connector-line-hitbox')) {
-        closeCtxMenu();
-    }
-});
-
-// ===== MULTI-SELECT (rubber-band) =====
-let multiSelected = [];
-let isRubberBanding = false;
-let rbStart = null;
-const selectionRect = document.getElementById('selectionRect');
-
-function clearMultiSelect() {
-    multiSelected = [];
-    document.querySelectorAll('.node.multi-selected').forEach(el => el.classList.remove('multi-selected'));
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
 }
 
-canvasWrapper.addEventListener('pointerdown', e => {
-    // Only start rubber-band on empty canvas area
-    const isNode = e.target.closest('.node');
-    const isHitbox = e.target.closest('.connector-line-hitbox');
-    const isUI = e.target.closest('#sidebar') || e.target.closest('#toolbar') || e.target.closest('.detail-panel') || e.target.closest('.modal-overlay');
-
-    if (isNode || isHitbox || isUI) return;
-    if (e.button !== 0) return;
-    if (connectMode || isLocked) return;
-
-    // Shift+Left-click drag on empty canvas = rubber-band select
-    panzoomInstance.setOptions({ disablePan: true });
-
-    clearMultiSelect();
-    deselectAll();
-
-    const crect = canvasEl.getBoundingClientRect();
-    const scale = panzoomInstance.getScale();
-
-    rbStart = {
-        clientX: e.clientX,
-        clientY: e.clientY,
-        canvasX: (e.clientX - crect.left) / scale,
-        canvasY: (e.clientY - crect.top) / scale,
-    };
-
-    selectionRect.style.display = 'none';
-    isRubberBanding = false;
-}, { capture: true });
-
-document.addEventListener('pointermove', e => {
-    if (!rbStart) return;
-    const dx = e.clientX - rbStart.clientX;
-    const dy = e.clientY - rbStart.clientY;
-    if (!isRubberBanding && Math.sqrt(dx * dx + dy * dy) > 6) isRubberBanding = true;
-    if (!isRubberBanding) return;
-
-    const crect = canvasEl.getBoundingClientRect();
-    const scale = panzoomInstance.getScale();
-    const curX = (e.clientX - crect.left) / scale;
-    const curY = (e.clientY - crect.top) / scale;
-
-    const rx = Math.min(rbStart.canvasX, curX);
-    const ry = Math.min(rbStart.canvasY, curY);
-    const rw = Math.abs(curX - rbStart.canvasX);
-    const rh = Math.abs(curY - rbStart.canvasY);
-
-    selectionRect.style.display = 'block';
-    selectionRect.style.left = rx + 'px';
-    selectionRect.style.top = ry + 'px';
-    selectionRect.style.width = rw + 'px';
-    selectionRect.style.height = rh + 'px';
-
-    // Highlight nodes inside rect
-    const rx2 = rx + rw, ry2 = ry + rh;
-    multiSelected = data.nodes.filter(n => {
-        const el = nodesEl.querySelector(`[data-id="${n.id}"]`);
-        const nw = el ? el.offsetWidth : 140, nh = el ? el.offsetHeight : 44;
-        return n.x + nw > rx && n.x < rx2 && n.y + nh > ry && n.y < ry2;
-    }).map(n => n.id);
-
-    document.querySelectorAll('.node').forEach(el => {
-        el.classList.toggle('multi-selected', multiSelected.includes(el.dataset.id));
-    });
-});
-
-document.addEventListener('pointerup', e => {
-    if (rbStart) {
-        if (isRubberBanding) {
-            selectionRect.style.display = 'none';
-            if (multiSelected.length === 1) {
-                // If only one node selected, treat as normal selection
-                selectNode(multiSelected[0]);
-                clearMultiSelect();
-            } else if (multiSelected.length > 0) {
-                deselectAll();
-                // Render already marked them mostly, just ensure no solo selection
-                render();
-            }
-        }
-        rbStart = null;
-        isRubberBanding = false;
-        panzoomInstance.setOptions({ disablePan: false });
-    }
-});
-
-function deleteMultiSelected() {
-    pushHistory();
-    const idsToRemove = new Set(multiSelected);
-    data.nodes = data.nodes.filter(n => !idsToRemove.has(n.id));
-    data.connections = data.connections.filter(c => !idsToRemove.has(c.from) && !idsToRemove.has(c.to));
-    multiSelected = []; selectedId = null;
-    save(); render();
+.btn-primary,
+.btn-secondary {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background 0.12s;
 }
 
-// Right-click on canvas area = group context menu if multi-selected
-canvasWrapper.addEventListener('contextmenu', e => {
-    if (e.target !== canvasWrapper && e.target.id !== 'canvas') return;
-    if (multiSelected.length < 2) return;
-    e.preventDefault();
-    buildCtxMenu(e.clientX, e.clientY, [
-        { type: 'section', label: `${multiSelected.length} nodes selected` },
-        {
-            type: 'color', label: 'Apply color', value: '#3b82f6', onChange: (v) => {
-                pushHistory();
-                multiSelected.forEach(id => {
-                    const n = findNode(id); if (!n) return;
-                    n.style = n.style || getDefaultStyle(n.type);
-                    n.style.bg = v;
-                    n.style.textColor = isLightColor(v) ? '#1a1a2e' : '#ffffff';
-                });
-                save(); render();
-            }
-        },
-        'divider',
-        { type: 'section', label: 'Apply shape' },
-        { label: '⬜ Rounded', action: () => { pushHistory(); multiSelected.forEach(id => applyNodeStyleSilent(id, { shape: 'rounded' })); save(); render(); } },
-        { label: '💊 Pill', action: () => { pushHistory(); multiSelected.forEach(id => applyNodeStyleSilent(id, { shape: 'pill' })); save(); render(); } },
-        { label: '🔲 Square', action: () => { pushHistory(); multiSelected.forEach(id => applyNodeStyleSilent(id, { shape: 'square' })); save(); render(); } },
-        'divider',
-        { icon: '🗑️', label: 'Delete all selected', danger: true, action: deleteMultiSelected },
-    ]);
-});
-
-function applyNodeStyleSilent(nodeId, patch) {
-    const n = findNode(nodeId);
-    if (!n) return;
-    n.style = Object.assign(n.style || getDefaultStyle(n.type), patch);
+.btn-primary {
+    background: var(--primary);
+    color: white;
 }
 
-// ===== UPDATED HTML EXPORT (with JSON import panel) =====
-function generateStaticHTML(bgColor) {
-    bgColor = bgColor || '#ffffff';
-    const nodeSizes = {};
-    data.nodes.forEach(n => {
-        const el = nodesEl.querySelector(`[data-id="${n.id}"]`);
-        nodeSizes[n.id] = el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 150, h: 44 };
-    });
+.btn-primary:hover {
+    background: var(--primary-hover);
+}
 
-    function lineD(from, to, style) {
-        const fw = nodeSizes[from.id]?.w || 150, fh = nodeSizes[from.id]?.h || 44;
-        const tw = nodeSizes[to.id]?.w || 150, th = nodeSizes[to.id]?.h || 44;
-        return getLinePath(from.x + fw / 2, from.y + fh / 2, to.x + tw / 2, to.y + th / 2, style);
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1.5px solid var(--border);
+}
+
+.btn-secondary:hover {
+    background: var(--bg);
+}
+
+/* ===== Welcome Modal ===== */
+.welcome-card {
+    max-width: 500px;
+}
+
+.welcome-hero {
+    padding: 32px 28px 24px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(135deg, #f0f7ff 0%, #fafafa 100%);
+}
+
+#selectionRect {
+    position: absolute;
+    border: 1px solid rgba(59, 130, 246, 0.8);
+    background: rgba(59, 130, 246, 0.15);
+    display: none;
+    z-index: 99;
+    pointer-events: none;
+    border-radius: 2px;
+}
+
+.welcome-icon {
+    font-size: 48px;
+    margin-bottom: 12px;
+}
+
+.welcome-hero h2 {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 8px;
+}
+
+.welcome-hero p {
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.welcome-features {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 13px;
+}
+
+.feature-item span {
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.welcome-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+#hint {
+    position: fixed;
+    bottom: 14px;
+    left: calc(var(--sidebar-w) + 16px);
+    z-index: 1000;
+    font-size: 11px;
+    color: var(--text-muted);
+    background: var(--toolbar-bg);
+    backdrop-filter: blur(12px);
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    pointer-events: auto;
+    opacity: 0.7;
+}
+
+body.locked #hint {
+    display: none;
+}
+
+/* ===== Mobile ===== */
+@media (max-width: 768px) {
+    :root {
+        --sidebar-w: 0px;
     }
 
-    function localDashArray(style) {
-        style = style || data.lineStyle || 'curved-dash';
-        return style.includes('dash') ? '8 6' : 'none';
+    #sidebar {
+        display: none;
     }
 
-    let svgPaths = '';
-    data.nodes.forEach(n => { if (!n.parentId) return; const p = findNode(n.parentId); if (!p) return; const s = n.lineStyle || data.lineStyle; svgPaths += `<path d="${lineD(p, n, s)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${localDashArray(s)}" fill="none"/>\n`; });
-    data.connections.forEach(c => { const f = findNode(c.from), t = findNode(c.to); if (!f || !t) return; const s = c.style || data.lineStyle; svgPaths += `<path d="${lineD(f, t, s)}" stroke="#94a3b8" stroke-width="2" stroke-dasharray="${localDashArray(s)}" fill="none"/>\n`; });
+    #main {
+        margin-left: 0;
+    }
 
-    const exportNodes = JSON.stringify(data.nodes.map(n => ({ id: n.id, title: n.title, definition: n.definition || '', yt_link: n.yt_link || '' }))).replace(/<\/script>/gi, '<\\/script>');
-    const fullDataJSON = JSON.stringify(data).replace(/<\/script>/gi, '<\\/script>');
+    #toolbar {
+        overflow-x: auto;
+    }
 
-    let nodeDivs = '';
-    data.nodes.forEach(n => {
-        const s = n.style || getDefaultStyle(n.type);
-        let br = '10px'; if (s.shape === 'pill') br = '100px'; if (s.shape === 'square') br = '4px';
-        const border = s.border === 'none' ? 'none' : `2px ${s.border || 'solid'} rgba(0,0,0,0.12)`;
-        nodeDivs += `<div class="rm-node" data-id="${n.id}" style="position:absolute;left:${n.x}px;top:${n.y}px;min-width:120px;max-width:240px;padding:11px 18px;border-radius:${br};font-size:13.5px;font-weight:600;text-align:center;background:${s.bg};color:${s.textColor};border:${border};box-shadow:0 1px 3px rgba(0,0,0,0.08);white-space:nowrap;cursor:pointer;">${n.title}</div>\n`;
-    });
+    #toolbar button span {
+        display: none;
+    }
 
-    let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
-    data.nodes.forEach(n => { const sz = nodeSizes[n.id] || { w: 150, h: 44 }; minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); maxX = Math.max(maxX, n.x + sz.w); maxY = Math.max(maxY, n.y + sz.h); });
-    const pad = 60, w = maxX - minX + pad * 2, h = maxY - minY + pad * 2;
+    #hint {
+        left: 10px;
+        font-size: 10px;
+    }
 
-    return `<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Roadmap</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:${bgColor};font-family:Inter,sans-serif;overflow:auto}
-.canvas{position:relative;width:${w}px;height:${h}px;margin:20px auto}
-.rm-node{transition:box-shadow .15s,transform .12s}
-.rm-node:hover{box-shadow:0 6px 22px rgba(0,0,0,0.16)!important;transform:translateY(-2px)}
-.popup-overlay{display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.45);backdrop-filter:blur(4px);align-items:center;justify-content:center}
-.popup-overlay.show{display:flex}
-.popup-card{background:#fff;border-radius:16px;width:92%;max-width:540px;max-height:85vh;overflow:hidden;box-shadow:0 12px 50px rgba(0,0,0,0.2);display:flex;flex-direction:column;animation:popIn .2s ease}
-@keyframes popIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
-.popup-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #e5e7eb;background:#f9fafb}
-.popup-header h3{font-size:17px;font-weight:700;margin:0;color:#1a1a2e}
-.popup-close{background:none;border:none;font-size:24px;cursor:pointer;color:#6b7280}
-.popup-body{padding:20px;overflow-y:auto;flex:1;font-size:14px;line-height:1.8;color:#1a1a2e;white-space:pre-wrap;}
-.popup-body h4{margin-bottom:8px;font-size:15px}
-.popup-body p{margin-bottom:10px}
-.popup-body code{background:#f0f2f5;padding:2px 6px;border-radius:4px;font-size:12.5px}
-.popup-video{margin-bottom:16px;border-radius:10px;overflow:hidden;aspect-ratio:16/9;background:#0f172a}
-.popup-video iframe{width:100%;height:100%;border:none}
-</style>
-</head>
-<body>
-<div class="canvas" style="transform:translate(${-minX + pad}px,${-minY + pad}px)">
-<svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none">
-${svgPaths}
-</svg>
-${nodeDivs}
-</div>
-<div class="popup-overlay" id="popup">
-<div class="popup-card">
-<div class="popup-header"><h3 id="popupTitle"></h3><button class="popup-close" onclick="closePopup()">&times;</button></div>
-<div class="popup-body"><div id="popupVideo" class="popup-video" style="display:none"><iframe id="popupIframe" src="" allowfullscreen></iframe></div><div id="popupContent"></div></div>
-</div></div>
-<script>
-var nd=${exportNodes};
-function fn(id){return nd.find(function(n){return n.id===id})}
-function getEmbedUrl(url) {
-    if (!url) return '';
-    if (url.includes('/embed/')) return url;
-    let vid = '';
-    if (url.includes('v=')) vid = url.split('v=')[1].split('&')[0];
-    else if (url.includes('youtu.be/')) vid = url.split('youtu.be/')[1].split('?')[0];
-    return vid ? 'https://www.youtube.com/embed/' + vid : url;
-}
-document.querySelectorAll('.rm-node').forEach(function(el){el.addEventListener('click',function(){var n=fn(el.dataset.id);if(!n)return;document.getElementById('popupTitle').textContent=n.title;document.getElementById('popupContent').innerHTML=n.definition||'<p style="color:#9ca3af">No description.</p>';var v=document.getElementById('popupVideo'),f=document.getElementById('popupIframe');if(n.yt_link){v.style.display='block';f.src=getEmbedUrl(n.yt_link)}else{v.style.display='none';f.src=''}document.getElementById('popup').classList.add('show')})});
-function closePopup(){document.getElementById('popup').classList.remove('show');document.getElementById('popupIframe').src=''}
-document.getElementById('popup').addEventListener('click',function(e){if(e.target===this)closePopup()});
-document.addEventListener('keydown',function(e){if(e.key==='Escape')closePopup()});
-<\/script>
-</body>
-</html>`;
+    .detail-panel {
+        width: 100%;
+        border-left: none;
+    }
+
+    .connect-banner {
+        margin-left: 0;
+    }
 }
 
-// ===== BOOT =====
-initFirstRoadmap();
-initPanzoom();
-render();
-centerView();
-maybeShowWelcome();
+/* ===== Dropdown fix: use fixed position so it escapes toolbar ===== */
+.dropdown-menu {
+    position: fixed !important;
+    z-index: 9000 !important;
+    /* top and left are set by JavaScript via getBoundingClientRect */
+}
 
+/* ===== Context Menu ===== */
+.ctx-menu {
+    position: fixed;
+    z-index: 9999;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.16);
+    padding: 5px 0;
+    min-width: 195px;
+    animation: ctxIn 0.12s ease;
+    user-select: none;
+}
+
+@keyframes ctxIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95) translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.ctx-section {
+    padding: 5px 12px 3px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    background: var(--bg);
+}
+
+.ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    font-size: 13px;
+    color: var(--text);
+    cursor: pointer;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+}
+
+.ctx-item:hover {
+    background: var(--bg);
+}
+
+.ctx-item.danger {
+    color: var(--danger);
+}
+
+.ctx-item.danger:hover {
+    background: rgba(239, 68, 68, 0.07);
+}
+
+.ctx-item.active-item {
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.ctx-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+.ctx-color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 14px 8px;
+}
+
+.ctx-color-row label {
+    font-size: 12px;
+    color: var(--text-muted);
+    flex: 1;
+}
+
+.ctx-color-row input[type=color] {
+    width: 34px;
+    height: 26px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1px;
+    cursor: pointer;
+}
+
+/* ===== Rubber-Band Selection ===== */
+#selectionRect {
+    position: absolute;
+    border: 1.5px dashed var(--primary);
+    background: rgba(59, 130, 246, 0.06);
+    pointer-events: none;
+    z-index: 20;
+    display: none;
+    border-radius: 3px;
+}
+
+/* Multi-selected nodes */
+.node.multi-selected {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.1), var(--shadow-sm);
+}
+
+/* ===== Toast Notifications ===== */
+#toastContainer {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: none;
+}
+
+.toast {
+    background: #1a1a2e;
+    color: #ffffff;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    animation: toastIn 0.25s ease, toastOut 0.3s ease 1.8s forwards;
+    white-space: nowrap;
+    pointer-events: auto;
+}
+
+.toast.success {
+    border-left: 3px solid #22c55e;
+}
+
+.toast.info {
+    border-left: 3px solid #3b82f6;
+}
+
+.toast.warn {
+    border-left: 3px solid #f59e0b;
+}
+
+@keyframes toastIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes toastOut {
+    to {
+        opacity: 0;
+        transform: translateY(-8px) scale(0.95);
+    }
+}
+
+/* ===== Hint / Status Bar ===== */
+#hint {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.hint-left {
+    opacity: 0.65;
+}
+
+.hint-right {
+    font-weight: 600;
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+#hint kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    font-size: 11px;
+    font-family: inherit;
+    background: rgba(0, 0, 0, 0.05);
+}
+
+/* ===== Shortcuts Panel ===== */
+#shortcutsPanel {
+    position: fixed;
+    inset: 0;
+    z-index: 8000;
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#shortcutsPanel.hidden {
+    display: none;
+}
+
+.shortcuts-card {
+    background: var(--surface);
+    border-radius: 16px;
+    width: 380px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 12px 50px rgba(0, 0, 0, 0.2);
+    animation: popIn 0.2s ease;
+}
+
+.shortcuts-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.shortcuts-header h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0;
+}
+
+.shortcuts-body {
+    padding: 12px 20px 20px;
+    overflow-y: auto;
+    max-height: 60vh;
+}
+
+.shortcut-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 13px;
+    color: var(--text);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.shortcut-row:last-child {
+    border-bottom: none;
+}
+
+.shortcut-row kbd {
+    display: inline-block;
+    min-width: 80px;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg);
+    font-size: 11.5px;
+    font-family: inherit;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-muted);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
