@@ -330,7 +330,7 @@ function initPanzoom() {
         step: 0.1,
         canvas: true,
         cursor: 'default',
-        contain: 'outside',
+        contain: false,        // ← removes boundary restriction
         excludeClass: 'node',
     });
 
@@ -359,19 +359,25 @@ function updateZoomLabel() {
 
 function centerView() {
     if (!panzoomInstance) return;
-    // Find the bbox of nodes to center on them
-    if (!data.nodes.length) { panzoomInstance.reset(); return; }
+    if (!data.nodes.length) {
+        // No nodes — pan to center of the huge canvas
+        const ww = canvasWrapper.clientWidth;
+        const wh = canvasWrapper.clientHeight;
+        const canvasCenter = 32000 / 2;
+        panzoomInstance.zoom(1, { animate: false });
+        panzoomInstance.pan(ww / 2 - canvasCenter, wh / 2 - canvasCenter, { animate: false });
+        updateZoomLabel();
+        return;
+    }
+    // Has nodes — center on them as before
     const xs = data.nodes.map(n => n.x);
     const ys = data.nodes.map(n => n.y);
     const minX = Math.min(...xs), maxX = Math.max(...xs) + 180;
     const minY = Math.min(...ys), maxY = Math.max(...ys) + 50;
     const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
-    const scale = 1;
     const ww = canvasWrapper.clientWidth, wh = canvasWrapper.clientHeight;
-    const x = ww / 2 - cx * scale;
-    const y = wh / 2 - cy * scale;
-    panzoomInstance.zoom(scale, { animate: false });
-    panzoomInstance.pan(x, y, { animate: false });
+    panzoomInstance.zoom(1, { animate: false });
+    panzoomInstance.pan(ww / 2 - cx, wh / 2 - cy, { animate: false });
     updateZoomLabel();
 }
 
