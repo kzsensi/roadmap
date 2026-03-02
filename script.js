@@ -1612,16 +1612,20 @@ body {
     min-height: 100vh;
 }
 .canvas-wrapper {
-    width: 100%;
-    overflow-x: auto;
+    width: 100vw;
+    height: 100vh;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
     padding: 20px;
+    box-sizing: border-box;
+    touch-action: pan-x pan-y;
 }
+body { overflow: hidden; margin: 0; }
 .canvas {
     position: relative;
     width: ${w}px;
     height: ${h}px;
-    margin: 0 auto;
-    transform-origin: top left;
+    margin: 20px auto;
 }
 .rm-node { transition: box-shadow .15s ease, transform .12s ease; }
 .rm-node:hover {
@@ -1760,24 +1764,12 @@ document.getElementById('popup').addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePopup(); });
 
 (function() {
-    var canvas = document.getElementById('roadmapCanvas');
+    // Center the view on load — scroll to middle of canvas
     var wrapper = document.getElementById('canvasWrapper');
     var cw = ${w};
     var ch = ${h};
-    function fitCanvas() {
-        var viewW = wrapper.clientWidth;
-        if (viewW < cw) {
-            var s = viewW / cw;
-            canvas.style.transform = 'scale(' + s + ')';
-            canvas.style.transformOrigin = 'top left';
-            wrapper.style.height = (ch * s + 40) + 'px';
-        } else {
-            canvas.style.transform = 'none';
-            wrapper.style.height = 'auto';
-        }
-    }
-    fitCanvas();
-    window.addEventListener('resize', fitCanvas);
+    wrapper.scrollLeft = Math.max(0, (cw - wrapper.clientWidth) / 2);
+    wrapper.scrollTop = Math.max(0, (ch - wrapper.clientHeight) / 4);
 })();
 ` + '<' + '/script>' + `
 </body>
