@@ -283,8 +283,8 @@ body.locked #lineStyleSelect {
 /* Canvas (the panzoom-able element) */
 #canvas {
     position: relative;
-    width: 8000px;
-    height: 8000px;
+    width: 32000px;
+    height: 32000px;
     transform-origin: 0 0;
 }
 
